@@ -1,2 +1,0 @@
-[console_scripts]
-agile-team = agile_team.cli.main:app
