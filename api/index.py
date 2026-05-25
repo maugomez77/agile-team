@@ -1109,7 +1109,7 @@ async def task_detail_page(task_id: str):
   :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;
          --green: #5e6ad2; --blue: #5e6ad2; --yellow: #f2a33b; --red: #e5484d; --purple: #8b5cf6; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 960px; margin: 0 auto; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 1200px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
   a:hover {{ text-decoration: underline; }}
   .back {{ font-size: 12px; margin-bottom: 16px; display: inline-block; }}
@@ -1134,6 +1134,11 @@ async def task_detail_page(task_id: str):
   .comment-box textarea:focus {{ border-color: var(--blue); outline: none; }}
   .comment-box button {{ align-self: flex-end; padding: 8px 20px; border: 1px solid var(--green); border-radius: 6px; background: var(--green); color: #fff; cursor: pointer; font-size: 12px; }}
   .desc {{ color: var(--muted); font-size: 13px; line-height: 1.5; }}
+  .layout {{ display: flex; gap: 24px; }}
+  .main-col {{ flex: 1; min-width: 0; }}
+  .side-col {{ width: 340px; flex-shrink: 0; position: sticky; top: 80px; align-self: flex-start; max-height: calc(100vh - 100px); overflow-y: auto; }}
+  .chat-compact {{ font-size: 11px; }}
+  .chat-compact textarea {{ min-height: 50px; font-size: 11px; }}
 </style>
 </head>
 <body>
@@ -1154,9 +1159,41 @@ async def task_detail_page(task_id: str):
 </div>
 <div class="desc">{task.description or '(no description)'}</div>
 {children_html}
+
+<div class="layout">
+<div class="main-col">
+
 <div class="section">
   <h2>Artifacts ({len(task.artifacts)})</h2>
   {artifacts_html or '<div style="color:var(--muted);font-size:12px;">No artifacts yet</div>'}
+</div>
+
+<div class="section">
+  <h2>Activity Timeline ({len(task.activity_log)})</h2>
+  {activity_html or '<div style="color:var(--muted);font-size:12px;">No activity yet</div>'}
+</div>
+
+</div>
+<div class="side-col chat-compact">
+
+<div class="section">
+  <h2>AI Chat</h2>
+  <div id="chatMessages" style="max-height:300px;overflow-y:auto;margin-bottom:8px;font-size:11px;"></div>
+  <div class="comment-box">
+    <textarea id="chatInput" placeholder="Ask about this task..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){{event.preventDefault();sendChat()}}"></textarea>
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Add Comment</h2>
+  <div class="comment-box">
+    <textarea id="commentInput" placeholder="Write a comment... (Ctrl+Enter to submit)" onkeydown="if(event.key==='Enter'&&event.ctrlKey)addComment()"></textarea>
+    <button onclick="addComment()">Comment</button>
+  </div>
+</div>
+
+</div>
 </div>
 <div class="section">
   <h2>Activity Timeline ({len(task.activity_log)})</h2>
