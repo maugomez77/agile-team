@@ -1,0 +1,41 @@
+name: KiwiFlow Agent Worker
+
+on:
+  repository_dispatch:
+    types: [process_task]
+  schedule:
+    - cron: '*/10 * * * *'  # poll every 10 minutes
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Task ID to process'
+        required: false
+
+jobs:
+  work:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install agile-team
+        run: pip install -e .
+      
+      - name: Run worker
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          if [ -n "${{ github.event.inputs.task_id }}" ]; then
+            agile-team apply ${{ github.event.inputs.task_id }} -o /tmp/output
+          else
+            agile-team work -o /tmp/output --test
+          fi
+      
+      - name: Report results
+        if: always()
+        run: |
+          echo "Work complete. Check kiwi-flow.vercel.app for results."

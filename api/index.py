@@ -2392,6 +2392,22 @@ async def publish_to_github(task_id: str, request: Request):
         return JSONResponse({"error": str(e)[:500]}, 500)
 
 
+@app.post("/api/tasks/{task_id}/trigger-worker")
+async def trigger_worker(task_id: str):
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        return JSONResponse({"error": "GITHUB_TOKEN not configured"}, 500)
+
+    import httpx as _hx3
+    async with _hx3.AsyncClient(timeout=10) as client:
+        resp = await client.post(
+            "https://api.github.com/repos/maugomez77/agile-team/dispatches",
+            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+            json={"event_type": "process_task", "client_payload": {"task_id": task_id}}
+        )
+        if resp.status_code == 204:
+            return {"status": "triggered", "task_id": task_id, "note": "GitHub Actions worker will process this task"}
+        return JSONResponse({"error": f"GitHub API returned {resp.status_code}: {resp.text[:200]}"}, 500)
 @app.post("/api/tasks/{task_id}/deploy")
 async def deploy_to_vercel(task_id: str, request: Request):
     data = await request.json()
