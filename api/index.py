@@ -2202,7 +2202,7 @@ async def deploy_to_vercel(task_id: str, request: Request):
         project_resp = await client.get(f"https://api.vercel.com/v9/projects/{repo}", headers=headers)
         if project_resp.status_code == 404:
             create = await client.post("https://api.vercel.com/v9/projects", headers=headers,
-                json={"name": repo, "framework": "other"})
+                json={"name": repo})
             if create.status_code >= 400 and "exists" not in create.text:
                 return JSONResponse({"error": f"Project creation failed: {create.text[:200]}"}, 500)
         
