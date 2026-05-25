@@ -1,0 +1,9 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic:
+      - heading [level=1]
+    - button "Config" [ref=e4] [cursor=pointer]
+  - generic [ref=e5]:
+    - generic [ref=e7]: Loading board...
+    - generic [ref=e8]: Agents
+    - heading "Agent Communication Pipeline" [level=3] [ref=e10]

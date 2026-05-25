@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.agile-team/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.playwright-mcp/
+*.png
+*.log
+src/agile_team.egg-info/
+.DS_Store

@@ -1,0 +1,10 @@
+.venv
+.agile-team
+__pycache__
+*.pyc
+.git
+tests
+node_modules
+.pytest_cache
+.mypy_cache
+.ruff_cache
