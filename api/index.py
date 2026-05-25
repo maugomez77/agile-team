@@ -742,7 +742,50 @@ async def move_task(task_id: str, request: Request):
     return task.model_dump()
 
 
-@app.post("/api/tasks/{task_id}/comments")
+@app.post("/api/tasks/{task_id}/chat")
+async def chat_about_task(task_id: str, request: Request):
+    data = await request.json()
+    message = data.get("message", "")
+    if not message:
+        return JSONResponse({"error": "message required"}, 400)
+
+    task = await board_service.get_task(task_id)
+    if task is None:
+        return JSONResponse({"error": "task not found"}, 404)
+
+    # Build context from all artifacts
+    context = f"TASK: {task.title}\nSTATUS: {task.status.value}\nPRIORITY: P{task.priority}\n\n"
+    for a in task.artifacts[-5:]:
+        context += f"--- {a.artifact_type.value.upper()} (by {a.created_by}) ---\n{a.content[:1500]}\n\n"
+    
+    recent = [e for e in task.activity_log[-10:] if e.action in ("commented", "chat", "questions")]
+    if recent:
+        context += "RECENT CONVERSATION:\n"
+        for e in recent:
+            context += f"[{e.agent}]: {e.message[:200]}\n"
+
+    import agile_team.llm.providers.deepseek_provider  # noqa
+    from agile_team.llm.base import LLMFactory
+    provider = LLMFactory.create(
+        provider=config.llm.provider, model=config.llm.model,
+        base_url=config.llm.base_url, api_key=config.llm.api_key.strip(),
+        temperature=0.7, max_tokens=2048
+    )
+    
+    prompt = f"""You are a helpful agile assistant discussing task "{task.title}" with a team member.
+
+TASK CONTEXT:
+{context}
+
+USER QUESTION: {message}
+
+Respond conversationally. Be concise and helpful. If you need more info to answer, ask."""
+
+    response = await provider.generate(prompt, system_prompt="You are a knowledgeable agile team assistant. Answer questions about tasks clearly and helpfully.")
+    
+    await board_service.add_comment(task_id, "AI Assistant", response[:500], action="chat")
+    
+    return {"response": response, "task_id": task_id}
 async def add_comment(task_id: str, request: Request):
     data = await request.json()
     task = await board_service.add_comment(
@@ -1120,6 +1163,15 @@ async def task_detail_page(task_id: str):
   {activity_html or '<div style="color:var(--muted);font-size:12px;">No activity yet</div>'}
 </div>
 <div class="section">
+  <h2>AI Chat</h2>
+  <div id="chatMessages" style="max-height:300px;overflow-y:auto;margin-bottom:8px;font-size:11px;"></div>
+  <div class="comment-box">
+    <textarea id="chatInput" placeholder="Ask about this task..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){{event.preventDefault();sendChat()}}"></textarea>
+    <button onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<div class="section">
   <h2>Add Comment</h2>
   <div class="comment-box">
     <textarea id="commentInput" placeholder="Write a comment... (Ctrl+Enter to submit)" onkeydown="if(event.key==='Enter'&&event.ctrlKey)addComment()"></textarea>
@@ -1137,6 +1189,23 @@ async function addComment() {{
   }});
   input.value = '';
   location.reload();
+}}
+
+async function sendChat() {{
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const messages = document.getElementById('chatMessages');
+  messages.innerHTML += '<div style="margin-bottom:6px;"><strong>You:</strong> ' + msg + '</div>';
+  input.value = '';
+  
+  const resp = await fetch('/api/tasks/{task.id}/chat', {{
+    method:'POST', headers:{{'Content-Type':'application/json'}},
+    body: JSON.stringify({{message: msg}})
+  }});
+  const data = await resp.json();
+  messages.innerHTML += '<div style="margin-bottom:6px;color:var(--accent);"><strong>AI:</strong> ' + (data.response || 'Error').replace(/</g,'&lt;') + '</div>';
+  messages.scrollTop = messages.scrollHeight;
 }}
 </script>
 </body>
