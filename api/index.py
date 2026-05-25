@@ -2116,6 +2116,58 @@ async def releases_portal():
 </html>""")
 
 
+@app.post("/api/tasks/{task_id}/publish")
+async def publish_to_github(task_id: str, request: Request):
+    data = await request.json()
+    repo = data.get("repo", "")
+    if not repo:
+        return JSONResponse({"error": "repo name required"}, 400)
+
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        return JSONResponse({"error": "GITHUB_TOKEN not configured. Set GITHUB_TOKEN env var on Vercel."}, 500)
+
+    task = await board_service.get_task(task_id)
+    if task is None:
+        return JSONResponse({"error": "task not found"}, 404)
+
+    import base64, re as _re, httpx as _httpx
+
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
+    owner = "maugomez77"
+
+    async with _httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+        if resp.status_code == 404:
+            r = await client.post("https://api.github.com/user/repos", headers=headers,
+                json={"name": repo, "private": False, "auto_init": True})
+            if r.status_code >= 400:
+                return JSONResponse({"error": f"Repo creation failed: {r.text[:200]}"}, 500)
+
+        files = 0
+        for a in task.artifacts:
+            if a.artifact_type.value not in ("source_code", "deploy_config"):
+                continue
+            for m in _re.finditer(r'```(\w+)?(?::(\S+))?\n(.*?)```', a.content, _re.DOTALL):
+                lang = m.group(1) or ""
+                path = m.group(2) or ""
+                code = m.group(3).strip()
+                if not path:
+                    ext = {"js":"src/index.js","py":"src/main.py","ts":"src/index.ts","yml":".github/workflows/ci.yml","json":"config.json"}.get(lang.lower(), "")
+                    if ext: path = ext
+                if path and code:
+                    r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/{path}",
+                        headers=headers, json={"message": f"From {task.id}", "content": base64.b64encode(code.encode()).decode()})
+                    if r.status_code in (201, 200): files += 1
+
+        summary = f"# {task.title}\n\n**ID:** {task.id}\n**Status:** {task.status.value}\n**Priority:** P{task.priority}\n\n## Description\n{task.description}"
+        r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/TASK.md",
+            headers=headers, json={"message": f"Task {task.id}", "content": base64.b64encode(summary.encode()).decode()})
+        if r.status_code in (201, 200): files += 1
+
+    return {"status": "published", "repo": f"github.com/{owner}/{repo}", "files": files}
+
+
 async def _load_sprints() -> list:
     from agile_team.shared.models import Sprint
     import json as _json
