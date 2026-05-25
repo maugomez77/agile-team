@@ -781,6 +781,56 @@ USER QUESTION: {message}
 
 Respond conversationally. Be concise and helpful. If you need more info to answer, ask."""
 
+    # Check if user is asking about external URLs — fetch them
+    import re as _re2
+    urls = _re2.findall(r'https?://[^\s,;]+', message)
+    fetched_context = ""
+    if urls:
+        import httpx as _hx2
+        for url in urls[:2]:  # max 2 URLs
+            try:
+                async with _hx2.AsyncClient(timeout=8, follow_redirects=True) as _c2:
+                    resp = await _c2.get(url, headers={"User-Agent": "KiwiFlow/1.0"})
+                    if resp.status_code == 200:
+                        text = resp.text[:2000]
+                        # Try to parse as JSON
+                        try:
+                            data = resp.json()
+                            if isinstance(data, list):
+                                text = json.dumps(data[:5], indent=2)[:2000]
+                            elif isinstance(data, dict):
+                                # GitHub API response
+                                if "name" in data:
+                                    text = f"GitHub repo: {data.get('full_name','')}\nDescription: {data.get('description','')}\nStars: {data.get('stargazers_count','?')}\nLanguage: {data.get('language','?')}"
+                                elif "files" in data or "workflow_runs" in data:
+                                    runs = data.get("workflow_runs", [])
+                                    if runs:
+                                        r = runs[0]
+                                        text = f"CI Status: {r.get('conclusion','?')} | {r.get('name','?')} | {r.get('html_url','?')}"
+                                    else:
+                                        text = json.dumps(data, indent=2)[:1000]
+                                else:
+                                    text = json.dumps(data, indent=2)[:1000]
+                        except Exception:
+                            pass
+                        fetched_context += f"\n\nFETCHED FROM {url}:\n{text}\n"
+            except Exception:
+                fetched_context += f"\n\nURL {url}: Could not fetch (may be private or unavailable)\n"
+        
+        if fetched_context:
+            prompt = f"""You are a helpful agile assistant with web access.
+
+TASK CONTEXT:
+{context}
+
+WEB FETCH RESULTS:
+{fetched_context}
+
+USER QUESTION: {message}
+
+You CAN see the fetched web content above. Use it to answer accurately.
+Respond conversationally. Be concise and helpful."""
+
     response = await provider.generate(prompt, system_prompt="You are a knowledgeable agile team assistant. Answer questions about tasks clearly and helpfully.")
     
     await board_service.add_comment(task_id, "AI Assistant", response[:500], action="chat")
