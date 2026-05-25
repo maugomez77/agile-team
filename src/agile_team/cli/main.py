@@ -203,10 +203,38 @@ def apply(
                     files_created += 1
     
     if files_created == 0:
-        console.print("[yellow]No file markers found. Agents should output with '// filename: path/to/file' markers.[/yellow]")
-        raise typer.Exit(0)
+        console.print("[yellow]No file markers or code blocks found.[/yellow]")
+    else:
+        console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
     
-    console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
+    # Write all artifacts as docs
+    docs_dir = out / "docs" / "artifacts"
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    for a in task.artifacts:
+        ext = "md"
+        safe_type = a.artifact_type.value.replace("/", "-")
+        name = f"{a.created_by}_{safe_type}_{a.id[:6]}.{ext}"
+        (docs_dir / name).write_text(a.content)
+    console.print(f"[green]✓ {len(task.artifacts)} artifact(s) archived to {docs_dir}[/green]")
+    
+    # Write task summary
+    summary = f"""# {task.title}
+**ID:** {task.id}
+**Status:** {task.status.value}
+**Priority:** P{task.priority}
+**Description:** {task.description}
+
+## Artifacts
+"""
+    for a in task.artifacts:
+        summary += f"\n- **{a.artifact_type.value}** by {a.created_by} ({len(a.content)} chars)"
+    
+    summary += f"\n\n## Activity Log ({len(task.activity_log)} entries)\n"
+    for e in task.activity_log[-20:]:
+        ts = e.timestamp.strftime("%Y-%m-%d %H:%M") if e.timestamp else "?"
+        summary += f"\n- [{e.action}] {e.agent}: {e.message[:100]}"
+    
+    (out / "TASK.md").write_text(summary)
     
     if repo:
         console.print(f"\n[bold]Creating GitHub repo: {repo}[/bold]")
