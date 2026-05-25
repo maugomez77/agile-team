@@ -225,6 +225,15 @@ def work(
                 
                 if passed:
                     httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "test_ready"})
+                else:
+                    # Feed error back so Coder can fix
+                    console.print(f"  [yellow]Reporting failure to kiwi-flow for auto-fix...[/yellow]")
+                    httpx.post(f"{API}/tasks/{task_id}/comments", json={
+                        "agent": "opencode",
+                        "message": f"Tests failed. Sending back to code_ready for auto-fix.\n\n{test_output[:500]}",
+                        "action": "commented"
+                    })
+                    httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "code_ready"})
             except Exception as e:
                 console.print(f"  [yellow]Test run failed: {e}[/yellow]")
         
