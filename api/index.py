@@ -1,6 +1,8 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+PT = timezone(timedelta(hours=-7))  # Pacific Daylight Time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -155,9 +157,6 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <span id="lastUpdate" style="font-size:10px;color:var(--muted)"></span>
     <a href="/pipeline" style="font-size:11px;color:var(--green);text-decoration:none;">Pipeline</a>
     <a href="/settings" style="font-size:11px;color:var(--yellow);text-decoration:none;">Settings</a>
-    <a href="/sprints" style="font-size:11px;color:var(--blue);text-decoration:none;">Sprints</a>
-    <a href="/releases" style="font-size:11px;color:var(--purple);text-decoration:none;">Releases</a>
-    <a href="#" onclick="event.preventDefault();toggleConfig()" style="font-size:11px;color:var(--muted);text-decoration:none;">Config</a>
     <a href="/sprints" style="font-size:11px;color:var(--blue);text-decoration:none;">Sprints</a>
     <a href="/releases" style="font-size:11px;color:var(--purple);text-decoration:none;">Releases</a>
     <a href="#" onclick="event.preventDefault();toggleConfig()" style="font-size:11px;color:var(--muted);text-decoration:none;">Config</a>
@@ -352,7 +351,7 @@ async function refresh() {
   state.children = children;
   
   renderBoard();
-  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles'});
 }
 
 function renderBoard() {
@@ -435,7 +434,7 @@ function getReadiness(t) {
     }
   });
   if (hasOpenQuestions && lastQuestionTime) {
-    const hasResponse = log.some(e => e.action === 'commented' && e.agent === 'user' && new Date(e.timestamp) > lastQuestionTime);
+    const hasResponse = log.some(e => e.action === 'commented' && (e.agent||'').toLowerCase() === 'user' && new Date(e.timestamp) > lastQuestionTime);
     if (hasResponse) reasons.push('Questions answered');
     else reasons.push('Open questions unanswered');
   }
@@ -508,7 +507,7 @@ async function showTask(taskId) {
       <div style="border-left:2px solid var(--border);padding-left:12px;margin-top:6px;">
         ${(t.activity_log||[]).slice().reverse().map(e => {
           const icon = {created:'+',moved:'→',completed:'✓',commented:'💬',rejected:'✗',blocked:'⊘'}[e.action]||'·';
-          const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : '';
+          const time = e.timestamp ? new Date(e.timestamp).toLocaleTimeString('en-US', {timeZone:'America/Los_Angeles'}) : '';
           return `<div style="margin-bottom:6px;font-size:11px;">
             <span style="color:var(--blue);font-weight:600;">${icon}</span>
             <span style="color:var(--green);">${esc(e.agent)}</span>
@@ -524,7 +523,7 @@ async function showTask(taskId) {
         const short = full.substring(0, 500);
         const truncated = full.length > 500;
         const id = 'art_' + t.id + '_' + i;
-        const ts = a.created_at ? new Date(a.created_at).toLocaleString() : '';
+        const ts = a.created_at ? new Date(a.created_at).toLocaleString('en-US', {timeZone:'America/Los_Angeles'}) : '';
         return `<div class="artifact">
         <div class="type">${esc(a.artifact_type)} <span class="by">by ${esc(a.created_by)}</span> <span style="font-size:9px;color:var(--muted);">${ts}</span></div>
         <div class="content" id="${id}">${esc(short)}${truncated ? '<span style="color:var(--blue);cursor:pointer;" onclick="document.getElementById(\''+id+'\').innerHTML=document.getElementById(\''+id+'_full\').innerHTML">... [show full]</span>' : ''}</div>
@@ -926,7 +925,7 @@ async def task_detail_page(task_id: str):
 
     artifacts_html = ""
     for a in task.artifacts:
-        ts = a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else ""
+        ts = a.created_at.astimezone(PT).strftime("%Y-%m-%d %I:%M %p") if a.created_at else ""
         artifacts_html += f"""<div class="artifact">
             <div class="type">{a.artifact_type.value} <span class="by">by {a.created_by}</span> <span class="ts">{ts}</span></div>
             <div class="content">{a.content.replace(chr(10), '<br>')}</div>
@@ -936,7 +935,7 @@ async def task_detail_page(task_id: str):
     last_action = None
     for e in reversed(task.activity_log):
         icon = {"created":"+","started":"▶","completed":"✓","questions":"💬","error":"✗","moved":"→","commented":"💬"}.get(e.action, "·")
-        ts = e.timestamp.strftime("%Y-%m-%d %H:%M:%S") if e.timestamp else ""
+        ts = e.timestamp.astimezone(PT).strftime("%Y-%m-%d %I:%M %p") if e.timestamp else ""
         activity_html += f"""<div class="entry">
             <span class="icon">{icon}</span>
             <span class="agent">{e.agent}</span>
@@ -968,7 +967,7 @@ async def task_detail_page(task_id: str):
 
     if has_open_questions and last_question_time:
         has_response = any(
-            e.action == "commented" and e.agent == "user" and e.timestamp and e.timestamp > last_question_time
+            e.action == "commented" and e.agent.lower() == "user" and e.timestamp and e.timestamp > last_question_time
             for e in task.activity_log
         )
         if has_response:

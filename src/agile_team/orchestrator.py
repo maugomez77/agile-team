@@ -15,16 +15,16 @@ from agile_team.agents.all import (
 )
 from agile_team.agents.base import BaseAgent
 from agile_team.board.engine import BoardEngine
-from agile_team.shared.config import AgileTeamConfig, LLMConfig
+from agile_team.shared.config import LLMConfig, TeamConfig
 from agile_team.shared.models import Artifact, Task, TaskStatus
 
 
 class AgileOrchestrator:
     """Coordinates all agents and the kanban board."""
 
-    def __init__(self, config: Optional[AgileTeamConfig] = None):
-        self.config = config or AgileTeamConfig.default()
-        self.workspace = Path(self.config.workspace)
+    def __init__(self, config: Optional[TeamConfig] = None):
+        self.config = config or TeamConfig.default()
+        self.workspace = Path(".agile-team")
         self.workspace.mkdir(parents=True, exist_ok=True)
         self.board = BoardEngine(self.workspace)
         self._agents: dict[str, BaseAgent] = {}
@@ -39,11 +39,12 @@ class AgileOrchestrator:
             "qa": QAAgent,
             "devops": DevOpsAgent,
         }
-        for name, agent_cls in agent_map.items():
-            agent_config = self.config.agents.get(name)
-            if agent_config and agent_config.enabled:
+        for agent_def in self.config.agents:
+            agent_name = agent_def.id
+            agent_cls = agent_map.get(agent_name)
+            if agent_cls and agent_def.enabled:
                 llm_cfg = self.config.llm
-                self._agents[name] = agent_cls(self.workspace, llm_config=llm_cfg)
+                self._agents[agent_name] = agent_cls(self.workspace, llm_config=llm_cfg)
 
     async def run_agent(self, agent_name: str) -> list[tuple[Task, Artifact]]:
         agent = self._agents.get(agent_name)

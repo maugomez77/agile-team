@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from agile_team.orchestrator import AgileOrchestrator
-from agile_team.shared.config import AgileTeamConfig
+from agile_team.shared.config import TeamConfig
 from agile_team.shared.models import Artifact, TaskStatus
 
 app = typer.Typer(name="agile-team", help="Multi-agent agile development team")
@@ -18,11 +18,13 @@ console = Console()
 
 
 def _load_orchestrator(workspace: str = ".agile-team") -> AgileOrchestrator:
+    from pathlib import Path
+    from agile_team.shared.config import TeamConfig
     config_path = Path(workspace) / "config.json"
     if config_path.exists():
-        config = AgileTeamConfig(**json.loads(config_path.read_text()))
+        config = TeamConfig(**json.loads(config_path.read_text()))
     else:
-        config = AgileTeamConfig.default(workspace=Path(workspace))
+        config = TeamConfig.default()
     return AgileOrchestrator(config)
 
 
@@ -34,7 +36,7 @@ def init(
 ):
     """Initialize a new agile team workspace."""
     ws = Path(workspace)
-    config = AgileTeamConfig.default(workspace=ws)
+    config = TeamConfig.default()
     config.llm.provider = provider
     config.llm.model = model
 
@@ -118,6 +120,76 @@ def status():
         )
     console.print(table)
     console.print(f"\nTotal tasks on board: {len(status['tasks'])}")
+
+
+@app.command()
+def apply(
+    task_id: str = typer.Argument(..., help="Task ID to apply code from"),
+    output_dir: str = typer.Option(".", "--output", "-o", help="Output directory for generated files"),
+):
+    """Extract and write code files from a task's artifacts to disk."""
+    import re
+    from pathlib import Path
+    
+    orch = _load_orchestrator()
+    task = orch.board.get_task(task_id)
+    
+    if task is None:
+        console.print(f"[red]Task {task_id} not found in local workspace[/red]")
+        console.print("[yellow]Try fetching from remote...[/yellow]")
+        import httpx, json as _json
+        resp = httpx.get(f"https://kiwi-flow.vercel.app/api/tasks/{task_id}")
+        if resp.status_code == 200:
+            data = resp.json()
+            from agile_team.shared.models import Task
+            task = Task(**data)
+        else:
+            console.print("[red]Task not found remotely either[/red]")
+            raise typer.Exit(1)
+    
+    code_artifacts = [a for a in task.artifacts if a.artifact_type.value in ("source_code", "deploy_config")]
+    
+    if not code_artifacts:
+        console.print("[yellow]No source_code or deploy_config artifacts found. Run the Coder or DevOps agent first.[/yellow]")
+        raise typer.Exit(0)
+    
+    out = Path(output_dir).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    files_created = 0
+    
+    for artifact in code_artifacts:
+        content = artifact.content
+        matches = list(re.finditer(r'(?:#|//|\-\-)\s*filename:\s*(.+)', content, re.IGNORECASE))
+        
+        if not matches:
+            lines = content.strip().split('\n')
+            for i, line in enumerate(lines):
+                if line.startswith('```') and i + 1 < len(lines):
+                    header = lines[i + 1] if i + 1 < len(lines) else ''
+                    if header and not header.startswith('```'):
+                        matches = [re.match(r'^(?:\w+):\s*(.+)', header)]
+                        if matches and matches[0]:
+                            matches = [type('m', (), {'group': lambda s, g=matches[0].group(1): g})()]
+        
+        for match in matches:
+            filepath = match.group(1).strip()
+            file_start = match.end() if hasattr(match, 'end') else content.find(match.group(0)) + len(match.group(0))
+            
+            end_match = re.search(r'```', content[file_start:])
+            file_content = content[file_start:file_start + end_match.start()] if end_match else content[file_start:]
+            file_content = file_content.strip()
+            
+            if file_content:
+                target = out / filepath
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(file_content)
+                console.print(f"[green]  Created {target}[/green]")
+                files_created += 1
+    
+    if files_created == 0:
+        console.print("[yellow]No file markers found in artifacts. Agents should output code with '// filename: path/to/file' markers.[/yellow]")
+    else:
+        console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
 
 
 @app.command()
