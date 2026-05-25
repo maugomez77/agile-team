@@ -158,20 +158,49 @@ def apply(
     
     for artifact in code_artifacts:
         content = artifact.content
-        matches = list(re.finditer(r'(?:#|//|\-\-)\s*filename:\s*(.+)', content, re.IGNORECASE))
         
-        for match in matches:
+        # Method 1: explicit file markers
+        explicit = list(re.finditer(r'(?:#|//|\-\-)\s*filename:\s*(.+)', content, re.IGNORECASE))
+        
+        # Method 2: code blocks with optional filename ```lang:path
+        code_blocks = list(re.finditer(r'```(\w+)?(?::(\S+))?\n(.*?)```', content, re.DOTALL))
+        
+        # Method 3: old format with file headers
+        old_format = list(re.finditer(r'(?:^|\n)([\w/.-]+\.[\w]+)\n```', content))
+        
+        for match in explicit:
             filepath = match.group(1).strip()
             rest = content[match.end():]
-            end_match = re.search(r'```', rest)
+            end_match = re.search(r'```|^// filename:', rest, re.MULTILINE)
             file_content = rest[:end_match.start()].strip() if end_match else rest.strip()
-            
             if file_content:
                 target = out / filepath
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(file_content)
-                console.print(f"[green]  {target}[/green]")
+                console.print(f"[green]  ✓ {target}[/green]")
                 files_created += 1
+        
+        if not explicit and code_blocks:
+            for block in code_blocks:
+                lang = block.group(1) or ''
+                filepath = block.group(2) or ''
+                code = block.group(3).strip()
+                
+                if not filepath:
+                    ext_map = {'js':'src/index.js','py':'src/main.py','ts':'src/index.ts',
+                              'yml':'ci.yml','yaml':'ci.yml','dockerfile':'Dockerfile',
+                              'json':'config.json','html':'index.html','css':'styles.css'}
+                    for ext, default in ext_map.items():
+                        if lang.lower() == ext or (not lang and ext in code[:50].lower()):
+                            filepath = default
+                            break
+                
+                if filepath and code:
+                    target = out / filepath
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(code)
+                    console.print(f"[green]  ✓ {target}[/green]")
+                    files_created += 1
     
     if files_created == 0:
         console.print("[yellow]No file markers found. Agents should output with '// filename: path/to/file' markers.[/yellow]")
