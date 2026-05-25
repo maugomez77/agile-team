@@ -126,31 +126,30 @@ def status():
 def apply(
     task_id: str = typer.Argument(..., help="Task ID to apply code from"),
     output_dir: str = typer.Option(".", "--output", "-o", help="Output directory for generated files"),
+    repo: str = typer.Option("", "--repo", "-r", help="GitHub repo name to create and push to (e.g. sports-api)"),
+    repo_private: bool = typer.Option(False, "--private", help="Make the GitHub repo private"),
 ):
-    """Extract and write code files from a task's artifacts to disk."""
-    import re
+    """Extract and write code files from a task's artifacts to disk, optionally pushing to GitHub."""
+    import re, subprocess
     from pathlib import Path
     
     orch = _load_orchestrator()
     task = orch.board.get_task(task_id)
     
     if task is None:
-        console.print(f"[red]Task {task_id} not found in local workspace[/red]")
-        console.print("[yellow]Try fetching from remote...[/yellow]")
-        import httpx, json as _json
+        import httpx
         resp = httpx.get(f"https://kiwi-flow.vercel.app/api/tasks/{task_id}")
         if resp.status_code == 200:
-            data = resp.json()
             from agile_team.shared.models import Task
-            task = Task(**data)
+            task = Task(**resp.json())
         else:
-            console.print("[red]Task not found remotely either[/red]")
+            console.print("[red]Task not found[/red]")
             raise typer.Exit(1)
     
     code_artifacts = [a for a in task.artifacts if a.artifact_type.value in ("source_code", "deploy_config")]
     
     if not code_artifacts:
-        console.print("[yellow]No source_code or deploy_config artifacts found. Run the Coder or DevOps agent first.[/yellow]")
+        console.print("[yellow]No code artifacts found. Run Coder or DevOps agent first.[/yellow]")
         raise typer.Exit(0)
     
     out = Path(output_dir).resolve()
@@ -161,35 +160,50 @@ def apply(
         content = artifact.content
         matches = list(re.finditer(r'(?:#|//|\-\-)\s*filename:\s*(.+)', content, re.IGNORECASE))
         
-        if not matches:
-            lines = content.strip().split('\n')
-            for i, line in enumerate(lines):
-                if line.startswith('```') and i + 1 < len(lines):
-                    header = lines[i + 1] if i + 1 < len(lines) else ''
-                    if header and not header.startswith('```'):
-                        matches = [re.match(r'^(?:\w+):\s*(.+)', header)]
-                        if matches and matches[0]:
-                            matches = [type('m', (), {'group': lambda s, g=matches[0].group(1): g})()]
-        
         for match in matches:
             filepath = match.group(1).strip()
-            file_start = match.end() if hasattr(match, 'end') else content.find(match.group(0)) + len(match.group(0))
-            
-            end_match = re.search(r'```', content[file_start:])
-            file_content = content[file_start:file_start + end_match.start()] if end_match else content[file_start:]
-            file_content = file_content.strip()
+            rest = content[match.end():]
+            end_match = re.search(r'```', rest)
+            file_content = rest[:end_match.start()].strip() if end_match else rest.strip()
             
             if file_content:
                 target = out / filepath
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(file_content)
-                console.print(f"[green]  Created {target}[/green]")
+                console.print(f"[green]  {target}[/green]")
                 files_created += 1
     
     if files_created == 0:
-        console.print("[yellow]No file markers found in artifacts. Agents should output code with '// filename: path/to/file' markers.[/yellow]")
-    else:
-        console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
+        console.print("[yellow]No file markers found. Agents should output with '// filename: path/to/file' markers.[/yellow]")
+        raise typer.Exit(0)
+    
+    console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
+    
+    if repo:
+        console.print(f"\n[bold]Creating GitHub repo: {repo}[/bold]")
+        try:
+            subprocess.run(["git", "init"], cwd=out, capture_output=True, check=True)
+            subprocess.run(["git", "add", "-A"], cwd=out, capture_output=True, check=True)
+            subprocess.run(["git", "commit", "-m", f"Generated from {task_id}: {task.title}"], cwd=out, capture_output=True, check=True)
+            
+            visibility = "--private" if repo_private else "--public"
+            result = subprocess.run(
+                ["gh", "repo", "create", repo, "--source=.", "--push", visibility, 
+                 "--description", f"Generated from {task_id}: {task.title}"],
+                cwd=out, capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                remote = result.stdout.strip().split("\n")[-1] if result.stdout else f"github.com/maugomez77/{repo}"
+                console.print(f"[green]✓ Pushed to {remote}[/green]")
+            else:
+                console.print(f"[yellow]gh repo create warning: {result.stderr.strip()}[/yellow]")
+                console.print("[yellow]Repo may already exist. Trying push...[/yellow]")
+                subprocess.run(["git", "remote", "add", "origin", f"git@github.com:maugomez77/{repo}.git"], cwd=out, capture_output=True)
+                subprocess.run(["git", "push", "-u", "origin", "main"], cwd=out, capture_output=True)
+                console.print(f"[green]✓ Pushed to github.com/maugomez77/{repo}[/green]")
+        except Exception as e:
+            console.print(f"[red]GitHub push failed: {e}[/red]")
+            console.print("[yellow]Files are still available locally at {out}[/yellow]")
 
 
 @app.command()
