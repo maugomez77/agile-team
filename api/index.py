@@ -2131,7 +2131,7 @@ async def publish_to_github(task_id: str, request: Request):
     if task is None:
         return JSONResponse({"error": "task not found"}, 404)
 
-    import base64, re as _re, httpx as _httpx
+    import base64, re, httpx as _httpx
 
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     owner = "maugomez77"
@@ -2146,9 +2146,7 @@ async def publish_to_github(task_id: str, request: Request):
 
         files = 0
         for a in task.artifacts:
-            if a.artifact_type.value not in ("source_code", "deploy_config"):
-                continue
-            for m in _re.finditer(r'```(\w+)?(?::(\S+))?\n(.*?)```', a.content, _re.DOTALL):
+            for m in re.finditer(r'```(\w*)\n(.*?)```', a.content, re.DOTALL):
                 lang = m.group(1) or ""
                 path = m.group(2) or ""
                 code = m.group(3).strip()
