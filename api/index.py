@@ -2136,34 +2136,49 @@ async def publish_to_github(task_id: str, request: Request):
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"}
     owner = "maugomez77"
 
-    async with _httpx.AsyncClient(timeout=30) as client:
-        resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
-        if resp.status_code == 404:
-            r = await client.post("https://api.github.com/user/repos", headers=headers,
-                json={"name": repo, "private": False, "auto_init": True})
-            if r.status_code >= 400:
-                return JSONResponse({"error": f"Repo creation failed: {r.text[:200]}"}, 500)
+    try:
+        async with _httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=headers)
+            if resp.status_code == 404:
+                r = await client.post("https://api.github.com/user/repos", headers=headers,
+                    json={"name": repo, "private": False, "auto_init": True})
+                if r.status_code >= 400:
+                    return JSONResponse({"error": f"Repo creation failed: {r.text[:200]}"}, 500)
 
-        files = 0
-        for a in task.artifacts:
-            for m in re.finditer(r'```(\w*)\n(.*?)```', a.content, re.DOTALL):
-                lang = m.group(1) or ""
-                path = m.group(2) or ""
-                code = m.group(3).strip()
-                if not path:
-                    ext = {"js":"src/index.js","py":"src/main.py","ts":"src/index.ts","yml":".github/workflows/ci.yml","json":"config.json"}.get(lang.lower(), "")
-                    if ext: path = ext
-                if path and code:
-                    r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/{path}",
-                        headers=headers, json={"message": f"From {task.id}", "content": base64.b64encode(code.encode()).decode()})
-                    if r.status_code in (201, 200): files += 1
+            files = 0
+            for a in task.artifacts:
+                try:
+                    for m in re.finditer(r'```(\w*)\n(.*?)```', a.content, re.DOTALL):
+                        lang = m.group(1) or ""
+                        path = ""
+                        code = m.group(2).strip()
+                        if not code:
+                            continue
+                        ext_map = {"js":"src/index.js","py":"src/main.py","ts":"src/index.ts","yml":".github/workflows/ci.yml","json":"config.json"}
+                        for ext, default in ext_map.items():
+                            if lang.lower() == ext:
+                                path = default
+                                break
+                        if not path and lang:
+                            path = f"src/{lang}_output.txt"
+                        if not path:
+                            continue
+                        r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/{path}",
+                            headers=headers, json={"message": f"From {task.id}", "content": base64.b64encode(code.encode()).decode()})
+                        if r.status_code in (201, 200):
+                            files += 1
+                except Exception:
+                    pass
 
-        summary = f"# {task.title}\n\n**ID:** {task.id}\n**Status:** {task.status.value}\n**Priority:** P{task.priority}\n\n## Description\n{task.description}"
-        r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/TASK.md",
-            headers=headers, json={"message": f"Task {task.id}", "content": base64.b64encode(summary.encode()).decode()})
-        if r.status_code in (201, 200): files += 1
+            summary = f"# {task.title}\n\n**ID:** {task.id}\n**Status:** {task.status.value}\n**Priority:** P{task.priority}\n\n## Description\n{task.description}"
+            r = await client.put(f"https://api.github.com/repos/{owner}/{repo}/contents/TASK.md",
+                headers=headers, json={"message": f"Task {task.id}", "content": base64.b64encode(summary.encode()).decode()})
+            if r.status_code in (201, 200):
+                files += 1
 
-    return {"status": "published", "repo": f"github.com/{owner}/{repo}", "files": files}
+        return {"status": "published", "repo": f"github.com/{owner}/{repo}", "files": files}
+    except Exception as e:
+        return JSONResponse({"error": str(e)[:500]}, 500)
 
 
 async def _load_sprints() -> list:
