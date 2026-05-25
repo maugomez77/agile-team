@@ -2154,7 +2154,7 @@ async def publish_to_github(task_id: str, request: Request):
                         code = m.group(2).strip()
                         if not code:
                             continue
-                        ext_map = {"js":"src/index.js","py":"src/main.py","ts":"src/index.ts","yml":".github/workflows/ci.yml","json":"config.json"}
+                        ext_map = {"js":"src/index.js","py":"src/main.py","ts":"src/index.ts","yml":".github/workflows/ci.yml","json":"package.json","javascript":"src/index.js","markdown":"README.md"}
                         for ext, default in ext_map.items():
                             if lang.lower() == ext:
                                 path = default
