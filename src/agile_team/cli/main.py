@@ -123,6 +123,136 @@ def status():
 
 
 @app.command()
+def work(
+    output_dir: str = typer.Option(".", "--output", "-o", help="Output directory for generated code"),
+    repo: str = typer.Option("", "--repo", "-r", help="GitHub repo to push to"),
+    test: bool = typer.Option(True, "--test/--no-test", help="Run tests after generating code"),
+):
+    """Connect to kiwi-flow, pull tasks, execute locally, push results back."""
+    import httpx, subprocess, re as _re
+    from pathlib import Path
+    
+    API = "https://kiwi-flow.vercel.app/api"
+    
+    console.print("[bold]Connecting to kiwi-flow...[/bold]")
+    
+    # Get board and find actionable tasks
+    resp = httpx.get(f"{API}/board")
+    if resp.status_code != 200:
+        console.print("[red]Could not connect to kiwi-flow[/red]")
+        raise typer.Exit(1)
+    
+    board = resp.json()
+    actionable = []
+    for col, tasks in board.get("columns", {}).items():
+        if col in ("code_ready", "test_ready", "deploy_ready"):
+            actionable.extend(tasks)
+    
+    if not actionable:
+        console.print("[yellow]No actionable tasks found on kiwi-flow[/yellow]")
+        raise typer.Exit(0)
+    
+    console.print(f"Found {len(actionable)} task(s) ready for work\n")
+    
+    out = Path(output_dir).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    all_files = 0
+    
+    for task_data in actionable[:3]:  # max 3 per run
+        task_id = task_data["id"]
+        console.print(f"[bold]Working on {task_id}: {task_data['title'][:60]}[/bold]")
+        
+        # Fetch full task
+        task_resp = httpx.get(f"{API}/tasks/{task_id}")
+        if task_resp.status_code != 200:
+            console.print(f"  [red]Could not fetch task[/red]")
+            continue
+        
+        task = task_resp.json()
+        artifacts = task.get("artifacts", [])
+        
+        # Find code artifacts
+        code_artifacts = [a for a in artifacts if a.get("artifact_type") in ("source_code", "deploy_config")]
+        if not code_artifacts:
+            console.print(f"  [yellow]No code artifacts yet - need to run Coder on dashboard[/yellow]")
+            continue
+        
+        # Extract files
+        files = 0
+        for a in code_artifacts:
+            content = a.get("content", "")
+            for m in _re.finditer(r'```(\w*)\n(.*?)```', content, _re.DOTALL):
+                lang = m.group(1) or ""
+                code = m.group(2).strip()
+                if not code or len(code) < 20:
+                    continue
+                ext_map = {"js": "src/index.js", "py": "src/main.py", "ts": "src/index.ts",
+                          "yml": ".github/workflows/ci.yml", "json": "package.json",
+                          "javascript": "src/index.js", "markdown": "README.md"}
+                filepath = ext_map.get(lang.lower(), f"src/{lang}_output.txt")
+                target = out / filepath
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(code)
+                console.print(f"  [green]✓ {target}[/green]")
+                files += 1
+        
+        if files == 0:
+            console.print(f"  [yellow]No code blocks found in artifacts[/yellow]")
+            continue
+        
+        all_files += files
+        
+        # Write task summary
+        summary = f"# {task['title']}\n\n**ID:** {task_id}\n**Status:** {task.get('status','?')}\n\nGenerated from kiwi-flow"
+        (out / "TASK.md").write_text(summary)
+        
+        # Run tests
+        if test:
+            console.print(f"  Running tests...")
+            try:
+                result = subprocess.run(["npm", "test"], cwd=out, capture_output=True, text=True, timeout=30)
+                test_output = result.stdout + result.stderr
+                passed = "PASS" in test_output or result.returncode == 0
+                icon = "✓" if passed else "✗"
+                console.print(f"  {icon} Tests {'passed' if passed else 'failed'}")
+                
+                # Report back to kiwi-flow
+                httpx.post(f"{API}/tasks/{task_id}/comments", json={
+                    "agent": "opencode",
+                    "message": f"Tests {'passed' if passed else 'failed'}. {test_output[:300]}",
+                    "action": "commented"
+                })
+                
+                if passed:
+                    httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "test_ready"})
+            except Exception as e:
+                console.print(f"  [yellow]Test run failed: {e}[/yellow]")
+        
+        # Push to GitHub
+        if repo:
+            try:
+                subprocess.run(["git", "init"], cwd=out, capture_output=True)
+                subprocess.run(["git", "add", "-A"], cwd=out, capture_output=True)
+                subprocess.run(["git", "commit", "-m", f"Generated from {task_id}"], cwd=out, capture_output=True)
+                result = subprocess.run(
+                    ["gh", "repo", "create", repo, "--source=.", "--push", "--public",
+                     "--description", f"Generated from {task_id}: {task['title']}"],
+                    cwd=out, capture_output=True, text=True
+                )
+                if result.returncode == 0:
+                    console.print(f"  [green]✓ Pushed to github.com/maugomez77/{repo}[/green]")
+                    httpx.post(f"{API}/tasks/{task_id}/comments", json={
+                        "agent": "opencode",
+                        "message": f"Pushed to github.com/maugomez77/{repo}",
+                        "action": "commented"
+                    })
+            except Exception as e:
+                console.print(f"  [yellow]Git push failed: {e}[/yellow]")
+    
+    console.print(f"\n[green]✓ {all_files} files generated in {out}[/green]")
+
+
+@app.command()
 def apply(
     task_id: str = typer.Argument(..., help="Task ID to apply code from"),
     output_dir: str = typer.Option(".", "--output", "-o", help="Output directory for generated files"),
