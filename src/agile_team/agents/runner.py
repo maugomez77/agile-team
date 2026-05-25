@@ -49,7 +49,7 @@ async def run_agent_on_task(
 
 
 def _build_context(task: Task, agent_def: AgentDefinition, config: TeamConfig) -> str:
-    """Build a rich context prompt for the agent."""
+    """Build a rich context prompt for the agent with plan-first reasoning."""
 
     prev_artifacts = []
     has_open_questions = False
@@ -113,6 +113,26 @@ PREVIOUS ARTIFACTS:
 {chr(10).join(prev_artifacts) if prev_artifacts else '(none - you are the first agent on this task)'}
 
 ---
-Based on the task and all previous work, produce your {agent_def.artifact_type}.
-Be thorough, specific, and actionable. Output ready-to-use content.
+REASONING PROTOCOL (follow this structure):
+
+STEP 1 — PLAN:
+Analyze the task and previous work. List 3-7 concrete steps you will take.
+Start with: "PLAN:"
+
+STEP 2 — REMOVE AMBIGUITY:
+If anything is unclear or missing, STOP and ask instead of guessing.
+Start with: "QUESTIONS:" (list numbered questions)
+
+STEP 3 — EXECUTE:
+Produce your {agent_def.artifact_type}. Start with your artifact type in caps
+(e.g. "SPECIFICATION:", "ARCHITECTURE:", "CODE:", "TEST RESULTS:", "DEPLOY:")
+
+STEP 4 — VERIFY:
+Check your work against the spec and acceptance criteria. Note any risks.
+Start with: "VERIFY:"
+
+STEP 5 — ROUTE:
+Choose the output stage. Include: "OUTPUT_STAGE: <id>"
+
+Be thorough, specific, and actionable.
 """

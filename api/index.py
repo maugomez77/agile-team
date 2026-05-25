@@ -816,7 +816,7 @@ async def process_task(task_id: str, agent_id: str):
         }, 409)
 
     try:
-        import time
+        import time, re
         start_time = time.time()
 
         await board_service.add_comment(
@@ -831,6 +831,18 @@ async def process_task(task_id: str, agent_id: str):
         duration_str = f"{elapsed:.1f}s" if elapsed < 60 else f"{elapsed/60:.1f}m"
 
         output = artifact.content.strip()
+
+        # Extract and log the plan
+        plan_match = re.search(r'PLAN:\s*\n?(.*?)(?=QUESTIONS:|SPECIFICATION:|ARCHITECTURE:|CODE:|TEST RESULTS:|DEPLOY:|VERIFY:|OUTPUT_STAGE:)', output, re.DOTALL | re.IGNORECASE)
+        if plan_match:
+            plan_text = plan_match.group(1).strip()[:500]
+            await board_service.add_comment(task_id, agent_def.name, f"Plan: {plan_text}", action="plan")
+
+        # Extract and log verification
+        verify_match = re.search(r'VERIFY:\s*\n?(.*?)(?=OUTPUT_STAGE:|$)', output, re.DOTALL | re.IGNORECASE)
+        if verify_match:
+            verify_text = verify_match.group(1).strip()[:300]
+            await board_service.add_comment(task_id, agent_def.name, f"Verified: {verify_text}", action="verify")
 
         is_split = output.startswith("SPLIT:") or "SPLIT:" in output[:500] or "**SPLIT:**" in output[:500]
         is_questions = output.startswith("QUESTIONS:") or "QUESTIONS:" in output[:200]
