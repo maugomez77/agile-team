@@ -30,109 +30,116 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agile Team - Kanban Board</title>
 <style>
-  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e;
-         --green: #3fb950; --blue: #58a6ff; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; }
+  :root { --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;
+         --accent: #5e6ad2; --accent-hover: #6b75e0; --green: #5e6ad2; --blue: #5e6ad2; --yellow: #f2a33b; --red: #e5484d;
+         --purple: #8b5cf6; --radius: 8px; --radius-lg: 12px; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-         background: var(--bg); color: var(--text); min-height: 100vh; }
-  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 24px;
-           display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  header h1 { font-size: 18px; color: var(--green); }
-  header .subtitle { color: var(--muted); font-size: 12px; }
-  .container { padding: 16px; max-width: 100%; margin: 0 auto; }
-  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-  .toolbar input, .toolbar select, .toolbar button { padding: 6px 12px; border: 1px solid var(--border);
-    border-radius: 6px; background: var(--card); color: var(--text); font-size: 12px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
+         background: #0d0d0f; color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased;
+         letter-spacing: -0.1px; }
+  header { background: rgba(13,13,15,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+           border-bottom: 1px solid rgba(255,255,255,0.04); padding: 0 24px; height: 48px;
+           display: flex; align-items: center; justify-content: space-between;
+           position: sticky; top: 0; z-index: 40; }
+  header h1 { font-size: 14px; font-weight: 600; color: #e4e4e8; letter-spacing: -0.2px; }
+  header .subtitle { color: var(--muted); font-size: 12px; margin-left: 10px; }
+  header a { font-size: 12px; padding: 3px 8px; border-radius: 5px; transition: color 0.1s; }
+  header a:hover { color: #fff; }
+  .container { padding: 20px 24px; max-width: 100%; margin: 0 auto; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .toolbar input, .toolbar select, .toolbar button { padding: 6px 12px; border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px; background: rgba(255,255,255,0.03); color: var(--text); font-size: 12px; font-family: inherit;
+    transition: all 0.1s; height: 32px; }
   .toolbar input { min-width: 180px; }
-  .toolbar input:focus, .toolbar select:focus { border-color: var(--blue); outline: none; }
+  .toolbar input:focus, .toolbar select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 1px var(--accent); }
   .toolbar button { cursor: pointer; font-weight: 500; }
-  .toolbar button.primary { background: var(--green); border-color: var(--green); color: #fff; }
-  .toolbar button.danger { background: var(--red); border-color: var(--red); color: #fff; }
-  .toolbar button:hover { opacity: 0.85; }
-  .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
-  .column { background: var(--card); border: 1px solid var(--border); border-radius: 8px; min-height: 250px; display: flex; flex-direction: column; }
-  .column-header { padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex;
-    justify-content: space-between; align-items: center; }
-  .column-header h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .column-header .count { background: var(--border); border-radius: 10px; padding: 1px 7px; font-size: 10px; }
-  .column-body { padding: 6px; flex: 1; overflow-y: auto; max-height: 55vh; }
-  .task-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
-  .task-card:hover { border-color: var(--blue); }
-  .task-card .task-id { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
-  .task-card .task-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; line-height: 1.3; }
+  .toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .toolbar button:hover { background: rgba(255,255,255,0.06); }
+  .toolbar button.primary:hover { background: var(--accent-hover); }
+  .board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); gap: 0; overflow-x: auto; }
+  .column { background: transparent; min-height: 250px; display: flex; flex-direction: column;
+    border-right: 1px solid rgba(255,255,255,0.04); padding: 0 12px; }
+  .column:first-child { padding-left: 0; }
+  .column:last-child { border-right: none; padding-right: 0; }
+  .column-header { padding: 0 0 12px 0; display: flex; justify-content: space-between; align-items: center; }
+  .column-header h3 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; color: var(--muted); }
+  .column-header .count { color: var(--muted); font-size: 11px; font-weight: 500; }
+  .column-body { flex: 1; overflow-y: auto; max-height: 58vh; }
+  .task-card { background: rgba(22,22,24,0.6); border: 1px solid rgba(255,255,255,0.04); border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 6px; cursor: pointer; transition: all 0.15s; }
+  .task-card:hover { border-color: rgba(255,255,255,0.08); background: rgba(22,22,24,0.8); }
+  .task-card .task-id { font-size: 10px; color: var(--muted); margin-bottom: 2px; font-weight: 500; }
+  .task-card .task-title { font-size: 12px; font-weight: 500; margin-bottom: 4px; line-height: 1.4; }
   .task-card .task-meta { display: flex; gap: 6px; font-size: 10px; color: var(--muted); flex-wrap: wrap; }
-  .task-card .priority-badge { border-radius: 3px; padding: 1px 5px; font-size: 9px; font-weight: bold; }
-  .task-card.blocked { border-left: 3px solid var(--red); }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 50;
-    align-items: center; justify-content: center; }
+  .task-card .priority-badge { border-radius: 4px; padding: 1px 5px; font-size: 9px; font-weight: 600; color: #fff; }
+  .task-card.blocked { border-left: 2px solid var(--red); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px);
+    z-index: 50; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-    padding: 24px; max-width: 650px; width: 90%; max-height: 80vh; overflow-y: auto; }
-  .modal h2 { font-size: 16px; margin-bottom: 16px; color: var(--green); }
-  .modal .field { margin-bottom: 10px; }
-  .modal .field label { font-size: 10px; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 3px; }
-  .modal .field .value { font-size: 13px; }
-  .modal .artifact { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px; margin-bottom: 6px; }
-  .modal .artifact .type { color: var(--blue); font-size: 11px; font-weight: 600; }
+  .modal { background: #161618; border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius-lg);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.04), 0 24px 48px rgba(0,0,0,0.5);
+    padding: 24px; max-width: 640px; width: 92%; max-height: 78vh; overflow-y: auto; }
+  .modal h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.1px; }
+  .modal .field { margin-bottom: 8px; }
+  .modal .field label { font-size: 10px; color: var(--muted); font-weight: 600; display: block; margin-bottom: 2px; text-transform: uppercase; }
+  .modal .field .value { font-size: 12px; line-height: 1.5; }
+  .modal .artifact { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; padding: 10px; margin-bottom: 6px; }
+  .modal .artifact .type { color: var(--accent); font-size: 11px; font-weight: 600; }
   .modal .artifact .by { font-size: 10px; color: var(--muted); }
-  .modal .artifact .content { font-size: 11px; margin-top: 4px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+  .modal .artifact .content { font-size: 11px; margin-top: 4px; white-space: pre-wrap; max-height: 280px; overflow-y: auto; line-height: 1.5; }
   .modal .actions { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
-  .modal .actions button { padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px;
-    background: var(--bg); color: var(--text); cursor: pointer; font-size: 11px; }
-  .modal .actions button:hover { border-color: var(--blue); }
-  .modal .actions button.advance { background: var(--green); border-color: var(--green); color: #fff; }
+  .modal .actions button { padding: 5px 10px; border: 1px solid rgba(255,255,255,0.06); border-radius: 5px;
+    background: rgba(255,255,255,0.03); color: var(--text); cursor: pointer; font-size: 11px; font-weight: 500;
+    font-family: inherit; transition: background 0.1s; }
+  .modal .actions button:hover { background: rgba(255,255,255,0.06); }
+  .modal .actions button.advance { background: var(--accent); border-color: var(--accent); color: #fff; }
   .modal .actions button.reject { background: var(--red); border-color: var(--red); color: #fff; }
-  .agents { margin-top: 20px; }
-  .agent-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-    padding: 12px; text-align: center; position: relative; }
-  .agent-card.disabled { opacity: 0.3; }
-  .agent-card .agent-icon { font-size: 20px; font-weight: bold; margin-bottom: 4px; }
-  .agent-card .agent-name { font-size: 12px; font-weight: 500; }
+  .agents { margin-top: 24px; }
+  .agent-card { background: rgba(22,22,24,0.5); border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius);
+    padding: 12px; text-align: center; position: relative; transition: all 0.1s; }
+  .agent-card:hover { border-color: rgba(255,255,255,0.06); }
+  .agent-card.disabled { opacity: 0.2; }
+  .agent-card .agent-icon { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .agent-card .agent-name { font-size: 11px; font-weight: 600; }
   .agent-card .agent-role { font-size: 10px; color: var(--muted); }
-  .agent-card .agent-flow { font-size: 9px; color: var(--blue); margin-top: 4px; }
-  .agent-card.lead { border-color: var(--yellow); border-width: 2px; }
-  .agent-card.lead .badge { display: inline-block; background: var(--yellow); color: #000;
-    font-size: 9px; padding: 1px 5px; border-radius: 3px; margin-top: 3px; }
-  .agent-team { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);
-    display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-  .agent-team .agent-card { background: var(--bg); padding: 8px; min-width: 90px; }
-  .agent-team .agent-card .agent-icon { font-size: 15px; }
-  .agent-team .agent-card .agent-name { font-size: 10px; }
-  .agent-team .agent-card .agent-role { font-size: 9px; }
-  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-  .section-title { font-size: 13px; color: var(--muted); margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .config-panel { margin-top: 0; margin-bottom: 16px; background: var(--card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 16px; display: none; }
+  .agent-card .agent-flow { font-size: 9px; color: var(--accent); margin-top: 3px; font-weight: 500; }
+  .agent-card.lead { border-color: rgba(242,163,59,0.3); }
+  .agent-card.lead .badge { display: inline-block; background: var(--yellow); color: #000; font-size: 9px; padding: 1px 6px; border-radius: 4px; margin-top: 3px; font-weight: 600; }
+  .agent-team { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.03); display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; }
+  .agent-team .agent-card { background: rgba(255,255,255,0.02); padding: 8px; min-width: 80px; }
+  .agent-team .agent-card .agent-icon { font-size: 14px; }
+  .agent-team .agent-card .agent-name { font-size: 9px; }
+  .agent-team .agent-card .agent-role { font-size: 8px; }
+  .agent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+  .section-title { font-size: 11px; color: var(--muted); margin: 20px 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .config-panel { margin-top: 0; margin-bottom: 14px; background: rgba(22,22,24,0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius); padding: 14px; display: none; }
   .config-panel.open { display: block; }
-  .config-panel h3 { font-size: 13px; margin-bottom: 10px; color: var(--yellow); }
-  .config-panel pre { font-size: 11px; color: var(--muted); max-height: 300px; overflow: auto; }
-  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--green); color: #fff;
-    padding: 10px 18px; border-radius: 8px; font-size: 12px; z-index: 100; display: none; }
-  .toast.error { background: var(--red); }
+  .config-panel h3 { font-size: 12px; margin-bottom: 8px; color: var(--muted); font-weight: 600; }
+  .config-panel pre { font-size: 10px; color: var(--muted); max-height: 280px; overflow: auto; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #1a1a1e; border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius);
+    color: #fff; padding: 10px 18px; font-size: 12px; z-index: 100; display: none; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .toast.error { border-color: var(--red); }
   .loading { text-align: center; color: var(--muted); padding: 40px; }
-  select.field-input { width: 100%; }
-  .pipeline-flow { margin-top: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; }
-  .pipeline-flow h3 { font-size: 13px; color: var(--muted); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .flow { display: flex; align-items: flex-start; gap: 0; min-width: max-content; padding: 8px 0; }
-  .stage-node { text-align: center; min-width: 110px; }
-  .stage-node .box { border: 2px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 11px; font-weight: 500; background: var(--bg); }
-  .stage-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 6px; min-width: 80px; }
-  .stage-arrow .line { width: 100%; height: 2px; background: var(--border); position: relative; }
-  .stage-arrow .line::after { content: '▶'; position: absolute; right: -4px; top: -8px; font-size: 10px; color: var(--border); }
-  .stage-arrow .agents { font-size: 9px; color: var(--blue); margin-top: 4px; text-align: center; line-height: 1.4; }
-  .stage-arrow .agents span { display: block; }
-  .live-feed { margin-top: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-  .live-feed h3 { font-size: 13px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .live-entry { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1a1a3e; font-size: 11px; }
-  .live-entry .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .pipeline-flow { margin-top: 24px; background: rgba(22,22,24,0.5); border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius); padding: 16px; overflow-x: auto; }
+  .pipeline-flow h3 { font-size: 11px; color: var(--muted); margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .flow { display: flex; align-items: flex-start; gap: 0; min-width: max-content; padding: 6px 0; }
+  .stage-node { text-align: center; min-width: 100px; }
+  .stage-node .box { border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 10px; font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.02); }
+  .stage-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 4px; min-width: 70px; }
+  .stage-arrow .line { width: 100%; height: 1px; background: rgba(255,255,255,0.06); position: relative; }
+  .stage-arrow .line::after { content: '›'; position: absolute; right: -2px; top: -7px; font-size: 12px; color: rgba(255,255,255,0.15); }
+  .stage-arrow .agents { font-size: 9px; color: var(--accent); margin-top: 3px; text-align: center; line-height: 1.3; }
+  .live-feed { margin-top: 24px; background: rgba(22,22,24,0.5); border: 1px solid rgba(255,255,255,0.03); border-radius: var(--radius); padding: 14px; }
+  .live-feed h3 { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+  .live-entry { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.02); font-size: 11px; }
+  .live-entry .status-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
   .live-entry .status-dot.running { background: var(--yellow); animation: pulse 1.5s infinite; }
   .live-entry .status-dot.done { background: var(--green); }
   .live-entry .status-dot.error { background: var(--red); }
   .live-entry .status-dot.questions { background: var(--purple); }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
   .live-entry .info { flex: 1; min-width: 0; }
-  .live-entry .info .agent { font-weight: 600; color: var(--blue); }
+  .live-entry .info .agent { font-weight: 600; color: var(--accent); }
   .live-entry .info .task { color: var(--green); }
   .live-entry .info .msg { color: var(--text); }
   .live-entry .time { color: var(--muted); font-size: 10px; white-space: nowrap; }
@@ -148,6 +155,9 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <span id="lastUpdate" style="font-size:10px;color:var(--muted)"></span>
     <a href="/pipeline" style="font-size:11px;color:var(--green);text-decoration:none;">Pipeline</a>
     <a href="/settings" style="font-size:11px;color:var(--yellow);text-decoration:none;">Settings</a>
+    <a href="/sprints" style="font-size:11px;color:var(--blue);text-decoration:none;">Sprints</a>
+    <a href="/releases" style="font-size:11px;color:var(--purple);text-decoration:none;">Releases</a>
+    <a href="#" onclick="event.preventDefault();toggleConfig()" style="font-size:11px;color:var(--muted);text-decoration:none;">Config</a>
     <a href="/sprints" style="font-size:11px;color:var(--blue);text-decoration:none;">Sprints</a>
     <a href="/releases" style="font-size:11px;color:var(--purple);text-decoration:none;">Releases</a>
     <a href="#" onclick="event.preventDefault();toggleConfig()" style="font-size:11px;color:var(--muted);text-decoration:none;">Config</a>
@@ -996,7 +1006,7 @@ async def task_detail_page(task_id: str):
     readiness_emoji = {"green": "🟢", "yellow": "🟡", "red": "🔴", "neutral": "⚪"}
     readiness_label = {"green": "Ready", "yellow": "Needs attention", "red": "Blocked", "neutral": "Pending"}
 
-    status_color = colors.get(task.status.value, "#8b949e")
+    status_color = colors.get(task.status.value, "#5c5c6e")
 
     children = [t for t in (await board_service.get_board()).tasks if t.parent_id == task.id]
     children_html = ""
@@ -1021,8 +1031,8 @@ async def task_detail_page(task_id: str):
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{task.id}: {task.title}</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e;
-         --green: #3fb950; --blue: #58a6ff; --yellow: #d29922; --red: #f85149; --purple: #bc8cff; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;
+         --green: #5e6ad2; --blue: #5e6ad2; --yellow: #f2a33b; --red: #e5484d; --purple: #8b5cf6; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 960px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -1149,7 +1159,7 @@ async def sprints_page():
 <head>
 <meta charset="UTF-8"><title>Sprints - Agile Team</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;          --green: #5e6ad2; --blue: #5e6ad2; }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 900px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -1248,7 +1258,7 @@ async def settings_page():
 <head>
 <meta charset="UTF-8"><title>Settings - Agile Team</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff; --red: #f85149; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;          --green: #5e6ad2; --blue: #5e6ad2; --red: #e5484d; }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 700px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -1396,7 +1406,7 @@ async def pipeline_editor():
 <head>
 <meta charset="UTF-8"><title>Pipeline Editor - Agile Team</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff; --red: #f85149; --yellow: #d29922; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;          --green: #5e6ad2; --blue: #5e6ad2; --red: #e5484d; --yellow: #f2a33b; }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -1649,7 +1659,7 @@ function addStage() {{
   const label = prompt('Stage label:');
   if (!label) return;
   changes.stages = changes.stages || {{}};
-  changes.stages[id] = {{id, label, color: '#8b949e', wip_limit: 0, _action: 'add'}};
+    changes.stages[id] = {{id, label, color: '#5c5c6e', wip_limit: 0, _action: 'add'}};
   saveAll();
 }}
 
@@ -1707,7 +1717,7 @@ async def save_pipeline(request: Request):
         elif changes.get("_action") == "add":
             config.pipeline.append(PipelineStage(
                 id=sid, label=changes.get("label", sid),
-                color=changes.get("color", "#8b949e"),
+                color=changes.get("color", "#5c5c6e"),
                 wip_limit=int(changes.get("wip_limit", 0)),
             ))
         else:
@@ -1869,7 +1879,7 @@ def _proposal_to_changes(action: str, details: dict) -> dict:
         changes["stages"][stage_id] = {
             "_action": "add",
             "label": details.get("stage_name", "New Stage"),
-            "color": details.get("color", "#8b949e"),
+            "color": details.get("color", "#5c5c6e"),
             "wip_limit": details.get("wip_limit", 0),
         }
 
@@ -1995,7 +2005,7 @@ async def sprint_detail(sprint_id: str):
 <head>
 <meta charset="UTF-8"><title>{sprint.name}</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;          --green: #5e6ad2; --blue: #5e6ad2; }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 900px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -2065,7 +2075,7 @@ async def releases_portal():
 <head>
 <meta charset="UTF-8"><title>Releases - Agile Team</title>
 <style>
-  :root {{ --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --muted: #8b949e; --green: #3fb950; --blue: #58a6ff; --yellow: #d29922; --purple: #bc8cff; }}
+  :root {{ --bg: #0d0d0f; --card: #161618; --border: rgba(255,255,255,0.06); --text: #d4d4d8; --muted: #5c5c6e;          --green: #5e6ad2; --blue: #5e6ad2; --yellow: #f2a33b; --purple: #8b5cf6; }}
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 24px; max-width: 1100px; margin: 0 auto; }}
   a {{ color: var(--blue); text-decoration: none; }}
@@ -2134,3 +2144,4 @@ async def _save_sprint(sprint) -> None:
                 "ON CONFLICT (sprint_id) DO UPDATE SET data = $2",
                 sprint.id, sprint.model_dump_json(indent=2),
             )
+

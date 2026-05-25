@@ -3,13 +3,13 @@
   "description": "Complete software development pipeline — enable/disable agents as needed",
   "pipeline": [
     { "id": "backlog", "label": "Backlog", "color": "#8b949e" },
-    { "id": "spec_ready", "label": "Spec Ready", "color": "#58a6ff" },
-    { "id": "arch_ready", "label": "Arch Ready", "color": "#bc8cff" },
-    { "id": "code_ready", "label": "Code Ready", "color": "#3fb950" },
-    { "id": "test_ready", "label": "Test Ready", "color": "#d29922" },
-    { "id": "deploy_ready", "label": "Deploy Ready", "color": "#f0883e" },
-    { "id": "done", "label": "Done", "color": "#3fb950" },
-    { "id": "blocked", "label": "Blocked", "color": "#f85149" }
+    { "id": "spec_ready", "label": "Spec Ready", "color": "#5e6ad2" },
+    { "id": "arch_ready", "label": "Arch Ready", "color": "#8b5cf6" },
+    { "id": "code_ready", "label": "Code Ready", "color": "#f2a33b" },
+    { "id": "test_ready", "label": "Test Ready", "color": "#e5484d" },
+    { "id": "deploy_ready", "label": "Deploy Ready", "color": "#5e6ad2" },
+    { "id": "done", "label": "Done", "color": "#5c5c6e" },
+    { "id": "blocked", "label": "Blocked", "color": "#e5484d" }
   ],
   "agents": [
     {

@@ -107,13 +107,13 @@ class TeamConfig(BaseModel):
             description="Complete software development pipeline",
             pipeline=[
                 PipelineStage(id="backlog", label="Backlog", color="#8b949e"),
-                PipelineStage(id="spec_ready", label="Spec Ready", color="#58a6ff"),
-                PipelineStage(id="arch_ready", label="Arch Ready", color="#bc8cff"),
-                PipelineStage(id="code_ready", label="Code Ready", color="#3fb950"),
-                PipelineStage(id="test_ready", label="Test Ready", color="#d29922"),
-                PipelineStage(id="deploy_ready", label="Deploy Ready", color="#f0883e"),
-                PipelineStage(id="done", label="Done", color="#3fb950"),
-                PipelineStage(id="blocked", label="Blocked", color="#f85149"),
+                PipelineStage(id="spec_ready", label="Spec Ready", color="#5e6ad2"),
+                PipelineStage(id="arch_ready", label="Arch Ready", color="#8b5cf6"),
+                PipelineStage(id="code_ready", label="Code Ready", color="#f2a33b"),
+                PipelineStage(id="test_ready", label="Test Ready", color="#e5484d"),
+                PipelineStage(id="deploy_ready", label="Deploy Ready", color="#5e6ad2"),
+                PipelineStage(id="done", label="Done", color="#5c5c6e"),
+                PipelineStage(id="blocked", label="Blocked", color="#e5484d"),
             ],
             agents=[
                 AgentDefinition(
