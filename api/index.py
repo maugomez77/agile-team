@@ -1019,6 +1019,27 @@ async def task_detail_page(task_id: str):
 
     status_color = colors.get(task.status.value, "#5c5c6e")
 
+    # Fetch CI status from GitHub Actions
+    ci_status = ""
+    try:
+        import httpx as _hx
+        token = os.environ.get("GITHUB_TOKEN", "")
+        if token:
+            async with _hx.AsyncClient(timeout=8) as _c:
+                resp = await _c.get(
+                    "https://api.github.com/repos/maugomez77/sports-api/actions/runs?per_page=1",
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if resp.status_code == 200:
+                    runs = resp.json().get("workflow_runs", [])
+                    if runs:
+                        r = runs[0]
+                        conclusion = r.get("conclusion", "pending")
+                        icon = {"success": "🟢", "failure": "🔴", "pending": "🟡", "cancelled": "⚪"}.get(conclusion, "⚪")
+                        ci_status = f" {icon} CI: {conclusion or r.get('status','?')}"
+    except Exception:
+        pass
+
     children = [t for t in (await board_service.get_board()).tasks if t.parent_id == task.id]
     children_html = ""
     if children:
@@ -1080,6 +1101,7 @@ async def task_detail_page(task_id: str):
 <div class="meta">
   <span class="badge" style="background:{status_color}">{stage_labels.get(task.status.value, task.status.value)}</span>
   <span style="color:var(--muted)">{readiness_emoji[readiness]} {readiness_label[readiness]}</span>
+  <span style="color:var(--muted)">{ci_status}</span>
   <span style="color:var(--muted)">Priority: <strong>P{task.priority}</strong></span>
   <span style="color:var(--muted)">Artifacts: <strong>{len(task.artifacts)}</strong></span>
   <span style="color:var(--muted)">Activity: <strong>{len(task.activity_log)} entries</strong></span>
