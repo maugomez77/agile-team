@@ -142,7 +142,7 @@
       "role": "CI/CD pipelines & infrastructure",
       "input_stage": "deploy_ready", "output_stage": "done",
       "artifact_type": "deploy_config",
-      "system_prompt": "You are a DevOps Engineer handling deployment and CI/CD.\n\nRULES: If requirements are unclear, start with 'QUESTIONS:'. Otherwise produce complete deployment configuration starting with 'DEPLOY:' including:\n1. GitHub Actions CI/CD pipeline (.github/workflows/ci.yml) — must include: checkout, install deps, run tests, build/lint\n2. Dockerfile (multi-stage if applicable)\n3. Environment config\n4. Runbook with deploy steps\n5. Optionally a Jenkinsfile for Jenkins users\n\nUse file markers: '// filename: .github/workflows/ci.yml' etc.",
+      "system_prompt": "You are a DevOps Engineer handling deployment and CI/CD.\n\nDEPLOYMENT CONTEXT:\n- Platform: Vercel (auto-deploys from GitHub on push)\n- CI/CD: GitHub Actions (.github/workflows/ci.yml)\n- Deploy flow: Push to GitHub → Vercel auto-detects → builds & deploys\n- Domain pattern: {repo-name}.vercel.app or custom domain\n- Secrets: GitHub Secrets → Vercel environment variables\n- Node version: 20.x LTS\n\nWHAT TO PRODUCE:\n1. GitHub Actions workflow (.github/workflows/ci.yml) with: checkout, install deps, run tests, lint\n2. vercel.json if needed (framework detection usually handles it)\n3. .env.example with required environment variables\n4. Deployment runbook\n\nRULES: If requirements are unclear, start with 'QUESTIONS:'. Otherwise produce complete deploy configuration starting with 'DEPLOY:'.\n\nUse file markers: '// filename: .github/workflows/ci.yml' for each file.",
       "enabled": true
     },
     {

@@ -2176,9 +2176,57 @@ async def publish_to_github(task_id: str, request: Request):
             if r.status_code in (201, 200):
                 files += 1
 
-        return {"status": "published", "repo": f"github.com/{owner}/{repo}", "files": files}
+        return {"status": "published", "repo": f"github.com/{owner}/{repo}", "files": files,
+                "deploy_url": f"https://{repo}.vercel.app",
+                "next_step": f"Vercel will auto-deploy from github.com/{owner}/{repo}. Connect once at vercel.com/import."}
     except Exception as e:
         return JSONResponse({"error": str(e)[:500]}, 500)
+
+
+@app.post("/api/tasks/{task_id}/deploy")
+async def deploy_to_vercel(task_id: str, request: Request):
+    data = await request.json()
+    repo = data.get("repo", "")
+    if not repo:
+        return JSONResponse({"error": "repo name required"}, 400)
+
+    vercel_token = os.environ.get("VERCEL_TOKEN", "")
+    if not vercel_token:
+        return JSONResponse({"error": "VERCEL_TOKEN not configured. Get one at vercel.com/account/tokens"}, 500)
+
+    import httpx as _httpx
+    headers = {"Authorization": f"Bearer {vercel_token}", "Content-Type": "application/json"}
+
+    async with _httpx.AsyncClient(timeout=30) as client:
+        # Create Vercel project linked to GitHub repo
+        project_resp = await client.post("https://api.vercel.com/v9/projects", headers=headers, json={
+            "name": repo,
+            "framework": "other",
+            "gitRepository": {
+                "type": "github",
+                "repo": f"maugomez77/{repo}"
+            }
+        })
+
+        if project_resp.status_code >= 400 and "already exists" not in project_resp.text:
+            return JSONResponse({"error": f"Vercel project creation failed: {project_resp.text[:200]}"}, 500)
+
+        # Trigger deploy
+        deploy_resp = await client.post("https://api.vercel.com/v13/deployments", headers=headers, json={
+            "name": repo,
+            "project": repo,
+            "target": "production",
+            "gitSource": {
+                "type": "github",
+                "repo": f"maugomez77/{repo}",
+                "ref": "main"
+            }
+        })
+
+        deploy_data = deploy_resp.json() if deploy_resp.status_code < 400 else {}
+        deploy_url = deploy_data.get("url", f"https://{repo}.vercel.app")
+
+        return {"status": "deploying", "repo": f"github.com/maugomez77/{repo}", "url": f"https://{deploy_url}"}
 
 
 async def _load_sprints() -> list:
