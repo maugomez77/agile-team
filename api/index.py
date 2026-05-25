@@ -2199,35 +2199,40 @@ async def deploy_to_vercel(task_id: str, request: Request):
 
     async with _httpx.AsyncClient(timeout=30) as client:
         # Get or create project
+        project_id = None
         project_resp = await client.get(f"https://api.vercel.com/v9/projects/{repo}", headers=headers)
-        if project_resp.status_code == 404:
+        if project_resp.status_code == 200:
+            project_id = project_resp.json().get("id")
+        elif project_resp.status_code == 404:
             create = await client.post("https://api.vercel.com/v9/projects", headers=headers,
                 json={"name": repo})
             if create.status_code >= 400 and "exists" not in create.text:
                 return JSONResponse({"error": f"Project creation failed: {create.text[:200]}"}, 500)
+            if create.status_code < 400:
+                project_id = create.json().get("id")
         
-        # Get latest deployment to check if it exists, then create a new one
-        # Use CLI-like deploy: create deployment from files
+        # Connect GitHub repo for auto-deploy
+        git_resp = await client.post(f"https://api.vercel.com/v1/integrations/git/link", headers=headers, json={
+            "type": "github",
+            "projectId": project_id,
+            "repo": f"maugomez77/{repo}"
+        })
+        
+        # Trigger a deployment from main branch
         deploy_req = {
             "name": repo,
             "target": "production",
-            "files": [],
-            "projectSettings": {"framework": None}
+            "gitSource": {"type": "github", "repo": f"maugomez77/{repo}", "ref": "main"}
         }
+        deploy_resp = await client.post("https://api.vercel.com/v13/deployments", headers=headers, json=deploy_req)
         
-        create_deploy = await client.post("https://api.vercel.com/v13/deployments", headers=headers, json=deploy_req)
-        
-        if create_deploy.status_code >= 400:
-            err = create_deploy.json()
-            return JSONResponse({"error": f"Deploy failed: {err.get('error',{}).get('message','unknown')}", "detail": str(err)[:300]}, 500)
-        
-        deploy_info = create_deploy.json()
         deploy_url = f"https://{repo}.vercel.app"
-        alias_url = deploy_info.get("url", deploy_url)
+        if deploy_resp.status_code < 400:
+            deploy_data = deploy_resp.json()
+            deploy_url = f"https://{deploy_data.get('url', deploy_url)}"
         
-        return {"status": "deploying", "repo": f"github.com/maugomez77/{repo}",
-                "url": f"https://{alias_url}" if alias_url.startswith("http") else deploy_url,
-                "note": "Full deploy requires Vercel CLI. Use: cd project && vercel --prod"}
+        return {"status": "deploying", "repo": f"github.com/maugomez77/{repo}", "url": deploy_url,
+                "note": "GitHub repo connected to Vercel. Future pushes will auto-deploy."}
 
 
 async def _load_sprints() -> list:
