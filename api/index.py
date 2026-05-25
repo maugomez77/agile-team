@@ -1283,16 +1283,35 @@ async function sendChat() {{
   const msg = input.value.trim();
   if (!msg) return;
   const messages = document.getElementById('chatMessages');
-  messages.innerHTML += '<div style="margin-bottom:6px;"><strong>You:</strong> ' + msg + '</div>';
+  messages.innerHTML += '<div style="margin-bottom:6px;"><strong>You:</strong> ' + msg.replace(/</g,'&lt;') + '</div>';
   input.value = '';
+  
+  const typingDiv = document.createElement('div');
+  typingDiv.style.marginBottom = '6px';
+  typingDiv.style.color = 'var(--accent)';
+  typingDiv.innerHTML = '<strong>AI:</strong> <span id="typing"></span>';
+  messages.appendChild(typingDiv);
+  messages.scrollTop = messages.scrollHeight;
   
   const resp = await fetch('/api/tasks/{task.id}/chat', {{
     method:'POST', headers:{{'Content-Type':'application/json'}},
     body: JSON.stringify({{message: msg}})
   }});
   const data = await resp.json();
-  messages.innerHTML += '<div style="margin-bottom:6px;color:var(--accent);"><strong>AI:</strong> ' + (data.response || 'Error').replace(/</g,'&lt;') + '</div>';
-  messages.scrollTop = messages.scrollHeight;
+  const text = (data.response || 'Error').replace(/</g,'&lt;');
+  
+  // Typing effect
+  const span = document.getElementById('typing');
+  let i = 0;
+  function type() {{
+    if (i < text.length) {{
+      span.textContent += text.charAt(i);
+      i++;
+      messages.scrollTop = messages.scrollHeight;
+      setTimeout(type, 10 + Math.random() * 20);
+    }}
+  }}
+  type();
 }}
 </script>
 </body>
