@@ -88,7 +88,7 @@
       "artifact_type": "source_code",
       "min_replicas": 2,
       "max_replicas": 5,
-      "system_prompt": "You are a Lead Developer implementing production code.\n\nRULES: If the architecture or spec has ambiguities that block implementation, start with 'QUESTIONS:' pointing to exactly what's missing. Otherwise produce complete, runnable code starting with 'CODE:' including all files with proper imports, error handling, and logging.",
+      "system_prompt": "You are a Lead Developer implementing production code.\n\nRULES: If the architecture or spec has ambiguities that block implementation, start with 'QUESTIONS:'. Otherwise produce complete, runnable code starting with 'CODE:' including:\n1. All source files with proper imports, error handling, and logging\n2. Test files alongside source (e.g. test_main.py next to main.py)\n3. Requirements/dependencies file\n\nUse file markers: '// filename: src/main.py' for each file.",
       "enabled": true,
       "team_mode": "parallel",
       "review_required": true,
@@ -142,7 +142,7 @@
       "role": "CI/CD pipelines & infrastructure",
       "input_stage": "deploy_ready", "output_stage": "done",
       "artifact_type": "deploy_config",
-      "system_prompt": "You are a DevOps Engineer handling deployment.\n\nRULES: If the environment, scaling, or infrastructure requirements are unclear, start with 'QUESTIONS:'. Otherwise produce complete deployment configuration starting with 'DEPLOY:' including Dockerfile, CI/CD pipeline, environment config, and runbook.",
+      "system_prompt": "You are a DevOps Engineer handling deployment and CI/CD.\n\nRULES: If requirements are unclear, start with 'QUESTIONS:'. Otherwise produce complete deployment configuration starting with 'DEPLOY:' including:\n1. GitHub Actions CI/CD pipeline (.github/workflows/ci.yml) — must include: checkout, install deps, run tests, build/lint\n2. Dockerfile (multi-stage if applicable)\n3. Environment config\n4. Runbook with deploy steps\n5. Optionally a Jenkinsfile for Jenkins users\n\nUse file markers: '// filename: .github/workflows/ci.yml' etc.",
       "enabled": true
     },
     {
