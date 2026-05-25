@@ -983,7 +983,7 @@ async def task_detail_page(task_id: str):
         ts = a.created_at.astimezone(PT).strftime("%Y-%m-%d %I:%M %p") if a.created_at else ""
         artifacts_html += f"""<div class="artifact">
             <div class="type">{a.artifact_type.value} <span class="by">by {a.created_by}</span> <span class="ts">{ts}</span></div>
-            <div class="content">{a.content.replace(chr(10), '<br>')}</div>
+            <div class="content">{a.content[:500].replace(chr(10), '<br>')}{'<br><span style=color:var(--accent)>... [scroll for full content]</span>' if len(a.content) > 500 else ''}</div>
         </div>"""
 
     activity_html = ""
