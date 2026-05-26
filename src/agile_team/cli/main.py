@@ -171,10 +171,10 @@ def work(
         task = task_resp.json()
         artifacts = task.get("artifacts", [])
         
-        # Check for linked GitHub repo from publish comment
+        # Check for linked GitHub repo from publish comment (latest first)
         repo_name = repo
         if not repo_name:
-            for e in task.get("activity_log", []):
+            for e in reversed(task.get("activity_log", [])):
                 msg = e.get("message", "")
                 if "github.com/maugomez77/" in msg:
                     import re as _re3
