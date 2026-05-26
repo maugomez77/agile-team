@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 const API_URL = process.env.API_URL || 'https://sports-6viiq1lfd-mauriciogomez77-8197s-projects.vercel.app';
-const UI_URL = process.env.UI_URL || 'https://sports-dashboard-kbblgi4tg-mauriciogomez77-8197s-projects.vercel.app';
+const UI_URL = process.env.UI_URL || 'https://sports-dashboard-iy4wv94p8-mauriciogomez77-8197s-projects.vercel.app';
 
 let passed = 0, failed = 0;
 const results = [];
@@ -88,6 +88,24 @@ function check(name, condition, detail = '') {
   // Check headings
   const h1 = await page.$('h1');
   check('Has heading', !!h1);
+
+  // Test card click opens detail view
+  const firstCardEl = await page.$('[class*=card]:first-child, [class*=article]:first-child, .card:first-child');
+  if (firstCardEl) {
+    await firstCardEl.click();
+    await page.waitForTimeout(800);
+    const detailModal = await page.$('.detail-overlay.open, .detail-modal, [class*=detail]');
+    check('Detail view opens on card click', !!detailModal);
+    const detailTitle = await page.$('.detail-modal h2, [class*=detail] h2');
+    check('Detail view has title', !!detailTitle);
+    const backBtn = await page.$('button:has-text("Back"), .back-btn');
+    check('Detail view has back button', !!backBtn);
+    if (backBtn) {
+      await backBtn.click();
+      await page.waitForTimeout(500);
+      check('Back button closes detail', true);
+    }
+  }
 
   await browser.close();
 
