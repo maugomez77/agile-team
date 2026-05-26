@@ -1,120 +1,206 @@
 {
   "name": "Full Agile Team",
-  "description": "Complete software development pipeline — enable/disable agents as needed",
+  "description": "Complete software development pipeline \u2014 enable/disable agents as needed",
   "pipeline": [
-    { "id": "backlog", "label": "Backlog", "color": "#8b949e" },
-    { "id": "spec_ready", "label": "Spec Ready", "color": "#5e6ad2" },
-    { "id": "arch_ready", "label": "Arch Ready", "color": "#8b5cf6" },
-    { "id": "code_ready", "label": "Code Ready", "color": "#f2a33b" },
-    { "id": "test_ready", "label": "Test Ready", "color": "#e5484d" },
-    { "id": "deploy_ready", "label": "Deploy Ready", "color": "#5e6ad2" },
-    { "id": "done", "label": "Done", "color": "#5c5c6e" },
-    { "id": "blocked", "label": "Blocked", "color": "#e5484d" }
+    {
+      "id": "backlog",
+      "label": "Backlog",
+      "color": "#8b949e"
+    },
+    {
+      "id": "spec_ready",
+      "label": "Spec Ready",
+      "color": "#5e6ad2"
+    },
+    {
+      "id": "arch_ready",
+      "label": "Arch Ready",
+      "color": "#8b5cf6"
+    },
+    {
+      "id": "code_ready",
+      "label": "Code Ready",
+      "color": "#f2a33b"
+    },
+    {
+      "id": "test_ready",
+      "label": "Test Ready",
+      "color": "#e5484d"
+    },
+    {
+      "id": "deploy_ready",
+      "label": "Deploy Ready",
+      "color": "#5e6ad2"
+    },
+    {
+      "id": "done",
+      "label": "Done",
+      "color": "#5c5c6e"
+    },
+    {
+      "id": "blocked",
+      "label": "Blocked",
+      "color": "#e5484d"
+    }
   ],
   "agents": [
     {
-      "id": "product_manager", "name": "Product Manager", "icon": "PM",
+      "id": "product_manager",
+      "name": "Product Manager",
+      "icon": "PM",
       "role": "Vision, requirements, business value",
-      "input_stage": "backlog", "output_stage": "spec_ready",
-      "output_stages": ["spec_ready", "code_ready", "done"],
+      "input_stage": "backlog",
+      "output_stage": "spec_ready",
+      "output_stages": [
+        "spec_ready",
+        "code_ready",
+        "done"
+      ],
       "artifact_type": "specification",
       "system_prompt": "You are a Product Manager defining requirements.\n\nROUTING: You can route this task to:\n- spec_ready (needs specification)\n- code_ready (simple fix, skip spec/arch)\n- done (task is trivial or a duplicate)\nInclude 'OUTPUT_STAGE: <id>' at the end of your response.\n\nRULES:\n1. If the task is too large to complete in one sprint, suggest splitting it. Start with 'SPLIT:' followed by a list of subtask titles.\n2. If ambiguous, start with 'QUESTIONS:' and list numbered questions.\n3. Only produce a specification when you have enough info, starting with 'SPECIFICATION:'.\n4. Choose the appropriate route based on task complexity.",
       "enabled": true,
       "team_mode": "review",
       "team": [
-        { "id": "business_analyst", "name": "Business Analyst", "icon": "BA",
+        {
+          "id": "business_analyst",
+          "name": "Business Analyst",
+          "icon": "BA",
           "role": "Requirements gathering & stakeholder interviews",
           "system_prompt": "You are a Business Analyst. If requirements are unclear, start with 'QUESTIONS:'. Otherwise produce detailed requirements.",
-          "enabled": true }
+          "enabled": true
+        }
       ]
     },
     {
-      "id": "scrum_master", "name": "Scrum Master", "icon": "SM",
+      "id": "scrum_master",
+      "name": "Scrum Master",
+      "icon": "SM",
       "role": "Process facilitation, unblocking, retrospectives",
-      "input_stage": "backlog", "output_stage": "spec_ready",
+      "input_stage": "backlog",
+      "output_stage": "spec_ready",
       "artifact_type": "specification",
       "system_prompt": "You are a Scrum Master. Break down tasks and refine backlog items.\n\nRULES: If the task lacks clarity, start with 'QUESTIONS:'. Otherwise produce a sprint-ready specification starting with 'SPECIFICATION:'.",
       "enabled": true
     },
     {
-      "id": "tech_lead", "name": "Tech Lead", "icon": "TL",
+      "id": "tech_lead",
+      "name": "Tech Lead",
+      "icon": "TL",
       "role": "Technical specifications & design leadership",
-      "input_stage": "spec_ready", "output_stage": "arch_ready",
-      "output_stages": ["arch_ready", "code_ready"],
+      "input_stage": "spec_ready",
+      "output_stage": "arch_ready",
+      "output_stages": [
+        "arch_ready",
+        "code_ready"
+      ],
       "artifact_type": "specification",
       "system_prompt": "You are a Technical Lead writing technical specs.\n\nROUTING: You can route to:\n- arch_ready (needs architecture design)\n- code_ready (simple feature, skip architecture)\nInclude 'OUTPUT_STAGE: <id>' at the end.\n\nRULES: If missing details, start with 'QUESTIONS:'. Otherwise produce a spec starting with 'SPECIFICATION:'.",
       "enabled": true,
       "team_mode": "parallel",
       "review_required": true,
       "team": [
-        { "id": "senior_dev_1", "name": "Senior Dev Alpha", "icon": "S1",
+        {
+          "id": "senior_dev_1",
+          "name": "Senior Dev Alpha",
+          "icon": "S1",
           "role": "Backend specialist",
           "system_prompt": "You are a Senior Backend Engineer. Identify gaps and ask 'QUESTIONS:' if needed. Otherwise produce backend design.",
-          "enabled": true },
-        { "id": "senior_dev_2", "name": "Senior Dev Beta", "icon": "S2",
+          "enabled": true
+        },
+        {
+          "id": "senior_dev_2",
+          "name": "Senior Dev Beta",
+          "icon": "S2",
           "role": "Frontend specialist",
           "system_prompt": "You are a Senior Frontend Engineer. Identify gaps and ask 'QUESTIONS:' if needed. Otherwise produce frontend design.",
-          "enabled": true }
+          "enabled": true
+        }
       ]
     },
     {
-      "id": "ux_designer", "name": "UX Designer", "icon": "UX",
+      "id": "ux_designer",
+      "name": "UX Designer",
+      "icon": "UX",
       "role": "User research, wireframes, interaction design",
-      "input_stage": "spec_ready", "output_stage": "arch_ready",
+      "input_stage": "spec_ready",
+      "output_stage": "arch_ready",
       "artifact_type": "specification",
-      "system_prompt": "You are a UX Designer. If user flows are unclear, start with 'QUESTIONS:'. Otherwise produce wireframes and interaction designs.",
-      "enabled": false
+      "system_prompt": "You are a UX Designer creating user interfaces.\n\nRULES: If user flows are unclear, start with QUESTIONS:. Otherwise produce wireframes, interaction designs, and HTML/CSS prototypes starting with DESIGN:.\n\nUse file markers: // filename: public/index.html for each file.",
+      "enabled": true
     },
     {
-      "id": "architect", "name": "Architect", "icon": "AR",
+      "id": "architect",
+      "name": "Architect",
+      "icon": "AR",
       "role": "System architecture & component design",
-      "input_stage": "arch_ready", "output_stage": "code_ready",
+      "input_stage": "arch_ready",
+      "output_stage": "code_ready",
       "artifact_type": "architecture",
       "system_prompt": "You are a Software Architect designing system architecture.\n\nRULES: If the spec has gaps that affect architecture decisions, start with 'QUESTIONS:' listing specific technical unknowns. Otherwise produce a complete architecture starting with 'ARCHITECTURE:' including component diagrams, data flow, tech stack choices, and file structure.",
       "enabled": true
     },
     {
-      "id": "security_engineer", "name": "Security Engineer", "icon": "SE",
+      "id": "security_engineer",
+      "name": "Security Engineer",
+      "icon": "SE",
       "role": "Threat modeling, security review, compliance",
-      "input_stage": "arch_ready", "output_stage": "code_ready",
+      "input_stage": "arch_ready",
+      "output_stage": "code_ready",
       "artifact_type": "architecture",
       "system_prompt": "You are a Security Engineer. If security requirements are unclear, start with 'QUESTIONS:'. Otherwise produce a security review and threat model.",
       "enabled": false
     },
     {
-      "id": "coder", "name": "Lead Developer", "icon": "CD",
+      "id": "coder",
+      "name": "Lead Developer",
+      "icon": "CD",
       "role": "Implementation leadership",
-      "input_stage": "code_ready", "output_stage": "test_ready",
+      "input_stage": "code_ready",
+      "output_stage": "test_ready",
       "artifact_type": "source_code",
       "min_replicas": 2,
       "max_replicas": 5,
-      "system_prompt": "You are a Lead Developer implementing production code.\n\nRULES: If the architecture or spec has ambiguities that block implementation, start with 'QUESTIONS:'. Otherwise produce complete, runnable code starting with 'CODE:' including:\n1. All source files with proper imports, error handling, and logging\n2. Test files alongside source (e.g. test_main.py next to main.py)\n3. Requirements/dependencies file\n\nUse file markers: '// filename: src/main.py' for each file.",
+      "system_prompt": "You are a Lead Developer implementing fullstack applications.\n\nRULES: If specs are ambiguous, start with QUESTIONS:. Otherwise produce complete code with CODE: including backend API, frontend UI (HTML/CSS/JS), tests, and package.json.\n\nUse file markers: // filename: src/index.js for each file.",
       "enabled": true,
       "team_mode": "parallel",
       "review_required": true,
       "team": [
-        { "id": "dev_1", "name": "Developer Alpha", "icon": "D1",
+        {
+          "id": "dev_1",
+          "name": "Developer Alpha",
+          "icon": "D1",
           "role": "Core backend services",
           "system_prompt": "You are a backend developer. Ask 'QUESTIONS:' if blocked. Otherwise produce backend code.",
-          "enabled": true },
-        { "id": "dev_2", "name": "Developer Beta", "icon": "D2",
+          "enabled": true
+        },
+        {
+          "id": "dev_2",
+          "name": "Developer Beta",
+          "icon": "D2",
           "role": "APIs & integrations",
           "system_prompt": "You are a developer focused on APIs. Ask 'QUESTIONS:' if blocked. Otherwise produce API code.",
-          "enabled": true }
+          "enabled": true
+        }
       ]
     },
     {
-      "id": "tech_writer", "name": "Technical Writer", "icon": "TW",
+      "id": "tech_writer",
+      "name": "Technical Writer",
+      "icon": "TW",
       "role": "API docs, user guides, changelogs",
-      "input_stage": "code_ready", "output_stage": "test_ready",
+      "input_stage": "code_ready",
+      "output_stage": "test_ready",
       "artifact_type": "source_code",
       "system_prompt": "You are a Technical Writer. If code is unclear, start with 'QUESTIONS:'. Otherwise produce documentation.",
       "enabled": false
     },
     {
-      "id": "qa", "name": "QA Lead", "icon": "QL",
+      "id": "qa",
+      "name": "QA Lead",
+      "icon": "QL",
       "role": "Testing strategy & quality assurance",
-      "input_stage": "test_ready", "output_stage": "deploy_ready",
+      "input_stage": "test_ready",
+      "output_stage": "deploy_ready",
       "artifact_type": "test_results",
       "min_replicas": 1,
       "max_replicas": 3,
@@ -123,52 +209,101 @@
       "team_mode": "review",
       "review_required": true,
       "team": [
-        { "id": "tester_1", "name": "Tester Alpha", "icon": "T1",
+        {
+          "id": "tester_1",
+          "name": "Tester Alpha",
+          "icon": "T1",
           "role": "Integration & E2E testing",
           "system_prompt": "You are a Test Engineer. Ask 'QUESTIONS:' if blocked. Otherwise produce test cases.",
-          "enabled": true }
+          "enabled": true
+        }
       ]
     },
     {
-      "id": "perf_engineer", "name": "Performance Engineer", "icon": "PE",
+      "id": "perf_engineer",
+      "name": "Performance Engineer",
+      "icon": "PE",
       "role": "Load testing, profiling, optimization",
-      "input_stage": "test_ready", "output_stage": "deploy_ready",
+      "input_stage": "test_ready",
+      "output_stage": "deploy_ready",
       "artifact_type": "test_results",
       "system_prompt": "You are a Performance Engineer. If targets are unclear, start with 'QUESTIONS:'. Otherwise produce load test results.",
       "enabled": false
     },
     {
-      "id": "devops", "name": "DevOps Engineer", "icon": "DO",
+      "id": "devops",
+      "name": "DevOps Engineer",
+      "icon": "DO",
       "role": "CI/CD pipelines & infrastructure",
-      "input_stage": "deploy_ready", "output_stage": "done",
+      "input_stage": "deploy_ready",
+      "output_stage": "done",
       "artifact_type": "deploy_config",
       "system_prompt": "You are a DevOps Engineer handling deployment and CI/CD.\n\nDEPLOYMENT CONTEXT:\n- Platform: Vercel (deploy via CLI: vercel --prod)\n- CI/CD: GitHub Actions (.github/workflows/ci.yml) for tests only\n- Domain: {project-name}.vercel.app (check Vercel dashboard for exact URL)\n- Secrets: stored in .env, loaded via Vercel dashboard\n- Node version: 20.x LTS\n\nWHAT TO PRODUCE:\n1. GitHub Actions workflow for: checkout, install, test, lint\n2. vercel.json if needed\n3. .env.example\n4. Deployment runbook with CLI commands\n5. CONFIRM the expected production URL in your output (e.g. 'Production URL: https://sports-api.vercel.app/v1/sports')\n\nUse file markers: '// filename: .github/workflows/ci.yml' for each file.",
       "enabled": true
     },
     {
-      "id": "sre", "name": "SRE", "icon": "SR",
+      "id": "sre",
+      "name": "SRE",
+      "icon": "SR",
       "role": "Reliability, monitoring, incident response",
-      "input_stage": "deploy_ready", "output_stage": "done",
+      "input_stage": "deploy_ready",
+      "output_stage": "done",
       "artifact_type": "deploy_config",
       "system_prompt": "You are an SRE. If SLOs are unclear, start with 'QUESTIONS:'. Otherwise produce monitoring and reliability config.",
       "enabled": false
     },
     {
-      "id": "release_manager", "name": "Release Manager", "icon": "RM",
+      "id": "release_manager",
+      "name": "Release Manager",
+      "icon": "RM",
       "role": "Release coordination & change management",
-      "input_stage": "deploy_ready", "output_stage": "done",
+      "input_stage": "deploy_ready",
+      "output_stage": "done",
       "artifact_type": "deploy_config",
       "system_prompt": "You are a Release Manager. If release requirements are unclear, start with 'QUESTIONS:'. Otherwise produce release plan.",
       "enabled": false
     }
   ],
   "task_fields": [
-    { "key": "title", "label": "Title", "type": "text", "required": true },
-    { "key": "description", "label": "Description", "type": "textarea" },
-    { "key": "priority", "label": "Priority", "type": "number", "default": "5" },
-    { "key": "assignee", "label": "Assignee", "type": "text" },
-    { "key": "story_points", "label": "Story Points", "type": "number" },
-    { "key": "type", "label": "Type", "type": "select", "options": ["Feature", "Bug", "Tech Debt", "Spike", "Docs"] }
+    {
+      "key": "title",
+      "label": "Title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "key": "description",
+      "label": "Description",
+      "type": "textarea"
+    },
+    {
+      "key": "priority",
+      "label": "Priority",
+      "type": "number",
+      "default": "5"
+    },
+    {
+      "key": "assignee",
+      "label": "Assignee",
+      "type": "text"
+    },
+    {
+      "key": "story_points",
+      "label": "Story Points",
+      "type": "number"
+    },
+    {
+      "key": "type",
+      "label": "Type",
+      "type": "select",
+      "options": [
+        "Feature",
+        "Bug",
+        "Tech Debt",
+        "Spike",
+        "Docs"
+      ]
+    }
   ],
   "llm": {
     "provider": "deepseek",
