@@ -171,8 +171,20 @@ def work(
         task = task_resp.json()
         artifacts = task.get("artifacts", [])
         
-        # Check for linked GitHub repo (from publish step)
-        repo_name = repo or task_data.get("title", "").lower().replace(" ", "-")[:30]
+        # Check for linked GitHub repo from publish comment
+        repo_name = repo
+        if not repo_name:
+            for e in task.get("activity_log", []):
+                msg = e.get("message", "")
+                if "github.com/maugomez77/" in msg:
+                    import re as _re3
+                    match = _re3.search(r'github\.com/maugomez77/([a-zA-Z0-9_-]+)', msg)
+                    if match:
+                        repo_name = match.group(1)
+                        break
+        
+        if not repo_name:
+            repo_name = "sports-api"  # fallback
         repo_url = f"https://github.com/maugomez77/{repo_name}.git"
         
         # Try cloning the repo first
