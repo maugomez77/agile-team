@@ -171,7 +171,52 @@ def work(
         task = task_resp.json()
         artifacts = task.get("artifacts", [])
         
-        # Find code artifacts
+        # Check for linked GitHub repo (from publish step)
+        repo_name = repo or task_data.get("title", "").lower().replace(" ", "-")[:30]
+        repo_url = f"https://github.com/maugomez77/{repo_name}.git"
+        
+        # Try cloning the repo first
+        cloned = False
+        try:
+            clone_result = subprocess.run(
+                ["git", "clone", repo_url, str(out)], 
+                capture_output=True, text=True, timeout=15
+            )
+            if clone_result.returncode == 0:
+                console.print(f"  [green]✓ Cloned {repo_url}[/green]")
+                cloned = True
+        except Exception:
+            pass
+        
+        if cloned:
+            # Run tests on cloned repo
+            if test:
+                console.print(f"  Running npm install...")
+                subprocess.run(["npm", "install"], cwd=out, capture_output=True, timeout=60)
+                console.print(f"  Running tests...")
+                try:
+                    result = subprocess.run(["npm", "test"], cwd=out, capture_output=True, text=True, timeout=30)
+                    test_output = result.stdout + result.stderr
+                    passed = result.returncode == 0
+                    icon = "✓" if passed else "✗"
+                    console.print(f"  {icon} Tests {'passed' if passed else 'failed'}")
+                    
+                    httpx.post(f"{API}/tasks/{task_id}/comments", json={
+                        "agent": "opencode",
+                        "message": f"Tests {'passed' if passed else 'failed'} on cloned repo {repo_url}.\n{test_output[:300]}",
+                        "action": "commented"
+                    })
+                    
+                    if passed:
+                        httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "test_ready"})
+                    else:
+                        httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "code_ready"})
+                except Exception as e:
+                    console.print(f"  [yellow]Test error: {e}[/yellow]")
+            all_files += 1  # count the cloned repo
+            continue
+        
+        # Fallback: extract from artifacts
         code_artifacts = [a for a in artifacts if a.get("artifact_type") in ("source_code", "deploy_config")]
         if not code_artifacts:
             console.print(f"  [yellow]No code artifacts yet - need to run Coder on dashboard[/yellow]")
