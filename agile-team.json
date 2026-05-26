@@ -1,6 +1,6 @@
 {
-  "name": "Full Agile Team",
-  "description": "Complete software development pipeline \u2014 enable/disable agents as needed",
+  "name": "KiwiFlow",
+  "description": "AI-native agile platform \u2014 specs, architecture, fullstack code, tests, CI/CD, and auto-deploy",
   "pipeline": [
     {
       "id": "backlog",
