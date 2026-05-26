@@ -225,26 +225,29 @@ def work(
                         # Auto-deploy to Vercel after tests pass
                         console.print(f"  Deploying to Vercel...")
                         try:
+                            import re as _re4
                             deploy_result = subprocess.run(
                                 ["npx", "vercel", "--prod", "--yes", "--token", os.environ.get("VERCEL_TOKEN", "")],
-                                cwd=out, capture_output=True, text=True, timeout=60
+                                cwd=out, capture_output=True, text=True, timeout=90
                             )
+                            combined = deploy_result.stdout + deploy_result.stderr
                             deploy_url = ""
-                            for line in deploy_result.stdout.split('\n'):
-                                if 'https://' in line and 'vercel.app' in line:
-                                    deploy_url = line.strip().split()[-1]
+                            for line in combined.split('\n'):
+                                match = _re4.search(r'(https://[a-zA-Z0-9_-]+\.vercel\.app)', line)
+                                if match:
+                                    deploy_url = match.group(1)
                             if deploy_url:
                                 console.print(f"  [green]✓ Deployed to {deploy_url}[/green]")
                                 httpx.post(f"{API}/tasks/{task_id}/comments", json={
                                     "agent": "opencode",
-                                    "message": f"Deployed to {deploy_url}",
+                                    "message": f"Deployed to {deploy_url}\n\nEndpoint: {deploy_url}/v1/sports",
                                     "action": "commented"
                                 })
                                 httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "done"})
                             else:
-                                console.print(f"  [yellow]Deploy completed but URL not detected[/yellow]")
+                                console.print(f"  [yellow]Deploy OK but URL not detected. Output: {combined[:200]}[/yellow]")
                         except Exception as e:
-                            console.print(f"  [yellow]Deploy failed: {e}[/yellow]")
+                            console.print(f"  [yellow]Deploy error: {e}[/yellow]")
                     else:
                         httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "code_ready"})
                 except Exception as e:
