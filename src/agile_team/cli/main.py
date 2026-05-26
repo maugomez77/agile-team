@@ -430,6 +430,56 @@ def apply(
     else:
         console.print(f"\n[green]✓ {files_created} file(s) written to {out}[/green]")
     
+    # If repo exists, clone + test + deploy
+    if repo:
+        console.print(f"\n[bold]Deploying to {repo}...[/bold]")
+        repo_url = f"https://github.com/maugomez77/{repo}.git"
+        deploy_dir = Path(f"/tmp/{repo}")
+        if deploy_dir.exists():
+            import shutil
+            shutil.rmtree(deploy_dir)
+        
+        import os as _os2
+        clone_result = subprocess.run(["git", "clone", repo_url, str(deploy_dir)], capture_output=True, text=True, timeout=15)
+        if clone_result.returncode == 0:
+            console.print(f"  ✓ Cloned {repo_url}")
+            
+            # npm install + test
+            subprocess.run(["npm", "install"], cwd=deploy_dir, capture_output=True, timeout=60)
+            test_result = subprocess.run(["npm", "test"], cwd=deploy_dir, capture_output=True, text=True, timeout=30)
+            passed = test_result.returncode == 0
+            console.print(f"  {'✓' if passed else '✗'} Tests {'passed' if passed else 'failed'}")
+            
+            # Copy generated files to cloned repo
+            import shutil as _shutil
+            for f in out.glob("**/*"):
+                if f.is_file() and '.git' not in str(f):
+                    rel = f.relative_to(out)
+                    dest = deploy_dir / rel
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    _shutil.copy2(f, dest)
+            
+            # Commit and push generated files
+            subprocess.run(["git", "add", "-A"], cwd=deploy_dir, capture_output=True)
+            subprocess.run(["git", "commit", "-m", f"Generated UI from {task_id}"], cwd=deploy_dir, capture_output=True)
+            subprocess.run(["git", "push"], cwd=deploy_dir, capture_output=True, timeout=15)
+            console.print(f"  ✓ Pushed generated files to {repo_url}")
+            
+            # Deploy to Vercel
+            vercel_token = _os2.environ.get("VERCEL_TOKEN", "")
+            if vercel_token:
+                console.print(f"  Deploying to Vercel...")
+                dep_result = subprocess.run(
+                    ["npx", "vercel", "--prod", "--yes", "--token", vercel_token],
+                    cwd=deploy_dir, capture_output=True, text=True, timeout=90
+                )
+                import re as _re5
+                combined = dep_result.stdout + dep_result.stderr
+                match = _re5.search(r'(https://[a-zA-Z0-9_-]+\.vercel\.app)', combined)
+                if match:
+                    deploy_url = match.group(1)
+                    console.print(f"  [green]✓ Live at {deploy_url}[/green]")
+    
     # Write all artifacts as docs
     docs_dir = out / "docs" / "artifacts"
     docs_dir.mkdir(parents=True, exist_ok=True)
