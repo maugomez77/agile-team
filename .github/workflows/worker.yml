@@ -31,7 +31,9 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           if [ -n "${{ github.event.client_payload.task_id }}" ]; then
-            agile-team apply ${{ github.event.client_payload.task_id }} -o /tmp/output
+            TID="${{ github.event.client_payload.task_id }}"
+            REPO=$(curl -sf "https://kiwi-flow.vercel.app/api/tasks/$TID" | python3 -c "import json,sys,re; t=json.load(sys.stdin); [print(re.search(r'github\.com/maugomez77/([\w-]+)', e['message']).group(1)) for e in t.get('activity_log',[]) if 'github.com/maugomez77/' in e.get('message','')]" 2>/dev/null | tail -1)
+            agile-team apply "$TID" -o /tmp/output --repo "${REPO:-sports-dashboard}"
           else
             agile-team work -o /tmp/output --test
           fi
