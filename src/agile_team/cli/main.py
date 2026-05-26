@@ -129,7 +129,7 @@ def work(
     test: bool = typer.Option(True, "--test/--no-test", help="Run tests after generating code"),
 ):
     """Connect to kiwi-flow, pull tasks, execute locally, push results back."""
-    import httpx, subprocess, re as _re
+    import httpx, subprocess, re as _re, os
     from pathlib import Path
     
     API = "https://kiwi-flow.vercel.app/api"
@@ -221,6 +221,30 @@ def work(
                     
                     if passed:
                         httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "test_ready"})
+                        
+                        # Auto-deploy to Vercel after tests pass
+                        console.print(f"  Deploying to Vercel...")
+                        try:
+                            deploy_result = subprocess.run(
+                                ["npx", "vercel", "--prod", "--yes", "--token", os.environ.get("VERCEL_TOKEN", "")],
+                                cwd=out, capture_output=True, text=True, timeout=60
+                            )
+                            deploy_url = ""
+                            for line in deploy_result.stdout.split('\n'):
+                                if 'https://' in line and 'vercel.app' in line:
+                                    deploy_url = line.strip().split()[-1]
+                            if deploy_url:
+                                console.print(f"  [green]✓ Deployed to {deploy_url}[/green]")
+                                httpx.post(f"{API}/tasks/{task_id}/comments", json={
+                                    "agent": "opencode",
+                                    "message": f"Deployed to {deploy_url}",
+                                    "action": "commented"
+                                })
+                                httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "done"})
+                            else:
+                                console.print(f"  [yellow]Deploy completed but URL not detected[/yellow]")
+                        except Exception as e:
+                            console.print(f"  [yellow]Deploy failed: {e}[/yellow]")
                     else:
                         httpx.post(f"{API}/tasks/{task_id}/move", json={"status": "code_ready"})
                 except Exception as e:
