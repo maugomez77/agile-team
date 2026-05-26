@@ -4,7 +4,7 @@ on:
   repository_dispatch:
     types: [process_task]
   schedule:
-    - cron: '*/10 * * * *'  # poll every 10 minutes
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       task_id:
@@ -43,28 +43,8 @@ jobs:
         run: |
           npm install playwright 2>/dev/null || true
           npx playwright install chromium 2>/dev/null || true
-          cat > /tmp/e2e.js << 'PLAYEOF'
-          const { chromium } = require('playwright');
-          (async () => {
-            const browser = await chromium.launch();
-            const page = await browser.newPage();
-            const url = process.env.DEPLOY_URL || 'https://sports-dashboard-kbblgi4tg-mauriciogomez77-8197s-projects.vercel.app';
-            console.log(`Testing: ${url}`);
-            await page.goto(url, { waitUntil: 'networkidle' });
-            const title = await page.title();
-            console.log(`Title: ${title}`);
-            const cards = await page.$$('.article-card, [class*=card], [class*=article]');
-            console.log(`Cards found: ${cards.length}`);
-            const buttons = await page.$$('button');
-            console.log(`Buttons: ${buttons.length}`);
-            const errors = [];
-            page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
-            await page.waitForTimeout(3000);
-            console.log(`Console errors: ${errors.length}`);
-            await browser.close();
-          })();
-          PLAYEOF
-          node /tmp/e2e.js
+          node tests/e2e/ui-api-tests.js 2>&1 | tee /tmp/e2e-results.txt
+      
+      - name: Report results
         if: always()
-        run: |
-          echo "Work complete. Check kiwi-flow.vercel.app for results."
+        run: echo "Work complete. Check kiwi-flow.vercel.app for results."
