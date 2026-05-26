@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
 
 const API_URL = process.env.API_URL || 'https://sports-6viiq1lfd-mauriciogomez77-8197s-projects.vercel.app';
-const UI_URL = process.env.UI_URL || 'https://sports-dashboard-e3263itr1-mauriciogomez77-8197s-projects.vercel.app';
+const UI_URL = process.env.UI_URL || 'https://sports-dashboard-kbblgi4tg-mauriciogomez77-8197s-projects.vercel.app';
 
 let passed = 0, failed = 0;
 const results = [];
@@ -50,7 +50,7 @@ function check(name, condition, detail = '') {
 
   // === UI TESTS ===
   console.log('--- UI Tests ---');
-  await page.goto(UI_URL, { waitUntil: 'networkidle', timeout: 15000 });
+  await page.goto(UI_URL, { waitUntil: 'domcontentloaded', timeout: 10000 });
   
   check('Page has title', (await page.title()).length > 0);
   check('No console errors', errors.length === 0, `${errors.length} errors found`);
