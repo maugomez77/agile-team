@@ -908,6 +908,30 @@ async def process_task(task_id: str, agent_id: str):
             "error": f"Task is in '{task.status.value}' but agent expects '{agent_def.input_stage}'"
         }, 409)
 
+    # Check if Oracle worker is available
+    worker_available = False
+    try:
+        import httpx as _hx4
+        async with _hx4.AsyncClient(timeout=3) as _c4:
+            resp = await _c4.get("http://170.9.29.124:9000/health")
+            worker_available = resp.status_code == 200
+    except Exception:
+        pass
+
+    if worker_available:
+        try:
+            import httpx as _hx5
+            async with _hx5.AsyncClient(timeout=120) as _c5:
+                resp = await _c5.post("http://170.9.29.124:9000/process", json={
+                    "task_id": task_id, "agent_id": agent_id
+                })
+                if resp.status_code == 200:
+                    result = resp.json()
+                    task = await board_service.get_task(task_id)
+                    return task.model_dump() if task else JSONResponse({"error": "failed"}, 500)
+        except Exception as e:
+            await board_service.add_comment(task_id, "worker", f"Worker error: {str(e)[:200]}", action="error")
+
     try:
         import time, re
         start_time = time.time()
