@@ -742,6 +742,40 @@ async def move_task(task_id: str, request: Request):
     return task.model_dump()
 
 
+@app.post("/api/tasks/{task_id}/feedback")
+async def send_feedback(task_id: str, request: Request):
+    data = await request.json()
+    artifact_id = data.get("artifact_id", "")
+    score = data.get("score", 0)  # 1 = thumbs up, 0 = thumbs down
+    comment = data.get("comment", "")
+
+    task = await board_service.get_task(task_id)
+    if task is None:
+        return JSONResponse({"error": "task not found"}, 404)
+
+    # Log to LangSmith
+    ls_key = os.environ.get("LANGCHAIN_API_KEY", "")
+    if ls_key:
+        import httpx as _hx6
+        try:
+            async with _hx6.AsyncClient(timeout=5) as _c6:
+                await _c6.post("https://api.smith.langchain.com/v1/feedback", json={
+                    "run_id": artifact_id,
+                    "key": "user_score",
+                    "score": score,
+                    "comment": comment,
+                    "project_name": "kiwi-flow"
+                }, headers={"x-api-key": ls_key})
+        except Exception:
+            pass
+
+    # Log to task activity
+    emoji = "👍" if score == 1 else "👎"
+    await board_service.add_comment(task_id, "user", f"{emoji} Feedback on artifact {artifact_id}: {comment or 'Rated'}", action="feedback")
+
+    return {"status": "ok", "score": score}
+
+
 @app.post("/api/tasks/{task_id}/chat")
 async def chat_about_task(task_id: str, request: Request):
     data = await request.json()
@@ -1056,7 +1090,10 @@ async def task_detail_page(task_id: str):
     for a in task.artifacts:
         ts = a.created_at.astimezone(PT).strftime("%Y-%m-%d %I:%M %p") if a.created_at else ""
         artifacts_html += f"""<div class="artifact">
-            <div class="type">{a.artifact_type.value} <span class="by">by {a.created_by}</span> <span class="ts">{ts}</span></div>
+            <div class="type">{a.artifact_type.value} <span class="by">by {a.created_by}</span> <span class="ts">{ts}</span>
+              <span style="margin-left:10px;cursor:pointer;" onclick="sendFeedback('{task.id}','{a.id}',1)">👍</span>
+              <span style="cursor:pointer;" onclick="sendFeedback('{task.id}','{a.id}',0)">👎</span>
+            </div>
             <div class="content">{a.content[:500].replace(chr(10), '<br>')}{'<br><span style=color:var(--accent)>... [scroll for full content]</span>' if len(a.content) > 500 else ''}</div>
         </div>"""
 
@@ -1300,6 +1337,14 @@ async function addComment() {{
   }});
   input.value = '';
   location.reload();
+}}
+
+async function sendFeedback(taskId, artifactId, score) {{
+  await fetch('/api/tasks/' + taskId + '/feedback', {{
+    method:'POST', headers:{{'Content-Type':'application/json'}},
+    body: JSON.stringify({{artifact_id: artifactId, score: score, comment: score === 1 ? 'Good' : 'Needs work'}})
+  }});
+  alert(score === 1 ? '👍 Thanks!' : '👎 Noted, will improve');
 }}
 
 async function sendChat() {{
