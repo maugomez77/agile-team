@@ -154,6 +154,15 @@ def work(
             actionable.extend(tasks)
     
     if not actionable:
+        # Send heartbeat so kiwi-flow knows this worker is alive
+        try:
+            httpx.post(f"{API}/workers/heartbeat", json={
+                "worker": "oracle-vm",
+                "host": "oracle-cloud-free",
+                "status": "idle"
+            })
+        except Exception:
+            pass
         console.print("[yellow]No actionable tasks found on kiwi-flow[/yellow]")
         raise typer.Exit(0)
     
