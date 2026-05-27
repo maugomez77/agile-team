@@ -18,6 +18,11 @@ console = Console()
 
 
 def _load_orchestrator(workspace: str = ".agile-team") -> AgileOrchestrator:
+    import os as _os
+    # Don't use PostgreSQL in CLI/worker mode - file-based only
+    _os.environ.pop("DATABASE_URL", None)
+    _os.environ.pop("POSTGRES_URL", None)
+    _os.environ.pop("POSTGRES_URL_NON_POOLING", None)
     from pathlib import Path
     from agile_team.shared.config import TeamConfig
     config_path = Path(workspace) / "config.json"
