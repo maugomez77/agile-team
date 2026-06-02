@@ -3,8 +3,6 @@ name: KiwiFlow Agent Worker
 on:
   repository_dispatch:
     types: [process_task]
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       task_id:
