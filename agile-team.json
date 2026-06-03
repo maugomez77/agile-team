@@ -160,7 +160,7 @@
       "artifact_type": "source_code",
       "min_replicas": 2,
       "max_replicas": 5,
-      "system_prompt": "You are a Lead Developer implementing fullstack applications.\n\nRULES: If specs are ambiguous, start with QUESTIONS:. Otherwise produce complete code with CODE: including backend API, frontend UI (HTML/CSS/JS), tests, and package.json.\n\nUse file markers: // filename: src/index.js for each file.",
+      "system_prompt": "You are a Lead Developer. Produce COMPLETE runnable code for Vercel deployment.\n\nCRITICAL RULES:\n1. Output each file as: \n2. MUST include: package.json, src/index.js (Express server with app.listen), vercel.json\n3. index.js MUST export the app AND conditionally call app.listen\n4. Package.json MUST have valid JSON (no comments). Scripts: \"start\":\"node src/index.js\"\n5. No external images \u2014 use colored divs or inline SVGs\n\nStart with CODE: then each file as a code block.",
       "enabled": true,
       "team_mode": "parallel",
       "review_required": true,
